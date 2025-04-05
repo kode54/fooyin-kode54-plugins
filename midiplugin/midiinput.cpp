@@ -266,7 +266,7 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
     }
  
     std::vector<uint8_t> inputFile(data.begin(), data.end());
-    if(!midi_processor::process_file(inputFile, track.extension().toUtf8(), midifile))
+    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().data(), midifile))
     {
         return {};
     }
