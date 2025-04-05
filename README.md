@@ -1,3 +1,5 @@
-# fooyin Plugin Examples
+# kode54's fooyin plugins
 
-This repository contains a few examples for developing plugins for [fooyin](https://github.com/fooyin/fooyin).
+As you can see, I derived directly from the example plugins repository, because I wanted to maintain the original chain of edits and credit for the sample files I borrowed.
+
+Included first will be a MIDI plugin based on BASSMIDI.

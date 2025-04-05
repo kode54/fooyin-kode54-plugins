@@ -1,0 +1,3 @@
+[submodule "midiplugin/midi_processing"]
+	path = midiplugin/midi_processing
+	url = https://github.com/kode54/midi_processing.git
