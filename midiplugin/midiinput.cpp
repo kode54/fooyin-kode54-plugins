@@ -69,6 +69,8 @@ MIDIDecoder::MIDIDecoder()
     m_format.setSampleFormat(Fooyin::SampleFormat::F32);
     m_format.setSampleRate(SampleRate);
     m_format.setChannelCount(2);
+    m_midiFile = NULL;
+    m_midiPlayer = NULL;
 }
 
 QStringList MIDIDecoder::extensions() const
