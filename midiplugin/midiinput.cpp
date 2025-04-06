@@ -58,7 +58,7 @@ void configurePlayer(BMPlayer* player)
     QString soundfontPath = setting.value(SoundfontPathSetting).toString();
     if(!soundfontPath.isEmpty())
     {
-        player->setSoundFont(soundfontPath.toUtf8().data());
+        player->setSoundFont(soundfontPath.toUtf8().constData());
     }
 }
 } // namespace
@@ -116,7 +116,7 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
 
     std::vector<uint8_t> inputFile(data.begin(), data.end());
     m_midiFile = new midi_container;
-    if(!midi_processor::process_file(inputFile, track.extension().toUtf8(), *m_midiFile))
+    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().constData(), *m_midiFile))
     {
         return {};
     }
@@ -268,9 +268,8 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
     }
  
     std::vector<uint8_t> inputFile(data.begin(), data.end());
-    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().data(), midifile))
-    {
-        return {};
+    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().constData(), midifile)) {
+        return false;
     }
 
     const FySettings settings;
@@ -280,8 +279,7 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
         loopCount = DefaultLoopCount;
     }
  
-    if(!midifile.get_timestamp_end(0))
-    {
+    if(!midifile.get_timestamp_end(0)) {
         return false;
     }
 
