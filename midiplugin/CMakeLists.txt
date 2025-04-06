@@ -24,6 +24,7 @@ create_fooyin_plugin(
             midiinputplugin.h
             midiinput.cpp
             midiinput.h
+            midiinputdefs.h
             midiinputsettings.cpp
             midiinputsettings.h
             BMPlayer.cpp
