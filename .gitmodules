@@ -1,3 +1,24 @@
 [submodule "midiplugin/midi_processing"]
 	path = midiplugin/midi_processing
 	url = https://github.com/kode54/midi_processing.git
+[submodule "xsf/psflib"]
+	path = xsf/psflib
+	url = https://bitbucket.org/losnoco/psflib.git
+[submodule "xsf/highly_experimental"]
+	path = xsf/highly_experimental
+	url = https://bitbucket.org/losnoco/highly_experimental.git
+[submodule "xsf/highly_theoretical"]
+	path = xsf/highly_theoretical
+	url = https://bitbucket.org/losnoco/highly_theoretical.git
+[submodule "xsf/highly_quixotic"]
+	path = xsf/highly_quixotic
+	url = https://bitbucket.org/losnoco/highly_quixotic.git
+[submodule "xsf/vio2sf"]
+	path = xsf/vio2sf
+	url = https://bitbucket.org/losnoco/vio2sf.git
+[submodule "xsf/lazyusf2"]
+	path = xsf/lazyusf2
+	url = https://bitbucket.org/losnoco/lazyusf2.git
+[submodule "xsf/sseqplayer"]
+	path = xsf/sseqplayer
+	url = https://bitbucket.org/losnoco/sseqplayer.git
