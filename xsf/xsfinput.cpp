@@ -1593,6 +1593,18 @@ bool XSFReader::readTrack(const AudioSource& source, Track& track)
             track.setGenres({value});
         } else if(!strcasecmp(tag->name, "COMMENT")) {
             track.setComment({value});
+        } else if(!strncasecmp(tag->name, "REPLAYGAIN_", 11)) {
+            char* end;
+            float fval = strtod(tag->value, &end);
+            if(!strcasecmp(tag->name + 11, "_ALBUM_GAIN")) {
+                track.setRGAlbumGain(fval);
+            } else if(!strcasecmp(tag->name + 11, "_ALBUM_PEAK")) {
+                track.setRGAlbumPeak(fval);
+            } else if(!strcasecmp(tag->name + 11, "_TRACK_GAIN")) {
+                track.setRGTrackGain(fval);
+            } else if(!strcasecmp(tag->name + 11, "_TRACK_PEAK")) {
+                track.setRGTrackPeak(fval);
+            }
         } else {
             track.addExtraTag(name, value);
         }
