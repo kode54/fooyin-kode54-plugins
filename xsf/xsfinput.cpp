@@ -1508,7 +1508,9 @@ Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
         }
 
         if(framesRead + framesWritten > totalFrames) {
-            framesWritten = totalFrames - framesRead;
+            size_t newFramesWritten = totalFrames - framesRead;
+            int16_t* buff = ((int16_t *)(buffer.data() + m_format.bytesForFrames(newFramesWritten)));
+            memset(buff, 0, m_format.bytesForFrames(framesWritten - newFramesWritten));
         }
     }
     framesRead += framesWritten;
