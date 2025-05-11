@@ -1021,8 +1021,6 @@ void XSFDecoder::emu_cleanup()
 }
 
 int XSFDecoder::emu_init() {
-    emu_cleanup();
-    
     if (m_version == 1 || m_version == 2)
     {
         m_emulator = malloc(psx_get_state_size(m_version));
@@ -1385,6 +1383,11 @@ int XSFDecoder::emu_render(int16_t* buf, unsigned& count)
 
 std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& source, const Fooyin::Track& track, DecoderOptions options)
 {
+    /* Must call here, with possible m_version already set, in case something is
+     * cleaning up a completely different PSF format than the one we're now opening.
+     */ 
+    emu_cleanup();
+
     if(track.isInArchive()) {
         return {};
     }
@@ -1431,6 +1434,7 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
  
 void XSFDecoder::start()
 {
+    emu_cleanup();
     emu_init();
     framesRead = 0;
 }
@@ -1445,6 +1449,7 @@ void XSFDecoder::seek(uint64_t pos)
 {
     uint64_t framesTarget = m_format.framesForDuration(pos);
     if(framesTarget < framesRead) {
+        emu_cleanup();
         emu_init();
         framesRead = 0;
     }
