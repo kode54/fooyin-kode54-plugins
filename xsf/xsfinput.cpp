@@ -1350,7 +1350,19 @@ int XSFDecoder::emu_render(int16_t* buf, unsigned& count)
             break;
 
         case 0x24:
-            state_render( (NDS_state *)m_emulator, buf, count );
+            if(!buf) {
+                int16_t temp[2048];
+                unsigned done = 0;
+                while(done < count) {
+                    unsigned framesThisRun = count - done;
+                    if(framesThisRun > 1024)
+                        framesThisRun = 1024;
+                    state_render( (NDS_state *)m_emulator, temp, framesThisRun );
+                    done += framesThisRun;
+                }
+            } else {
+                state_render( (NDS_state *)m_emulator, buf, count );
+            }
             break;
 
         case 0x25:
