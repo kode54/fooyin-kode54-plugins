@@ -14,4 +14,5 @@ set(CMAKE_AUTOUIC ON)
 find_package(Fooyin)
 
 add_subdirectory(midiplugin)
+add_subdirectory(vgmstream)
 add_subdirectory(xsf)
