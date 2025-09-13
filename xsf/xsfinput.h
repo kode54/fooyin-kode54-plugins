@@ -46,7 +46,6 @@ private:
     int emu_render(int16_t* buf, unsigned& pairs);
     void emu_cleanup();
 
-    DecoderOptions m_options;
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
     QString m_path;
@@ -55,6 +54,7 @@ private:
     void* m_emulatorExtra;
     Fooyin::Track m_changedTrack;
 
+    bool repeatOne;
     long totalFrames;
 	long framesLength;
 	long framesFade;
