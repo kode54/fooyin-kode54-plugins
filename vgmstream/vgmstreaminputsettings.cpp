@@ -51,7 +51,7 @@ VGMStreamInputSettings::VGMStreamInputSettings(QWidget* parent)
 
     auto* loopCountLabel = new QLabel(tr("Loop count") + u":"_s, this);
 
-    m_loopCount->setRange(0, 10);
+    m_loopCount->setRange(1, 10);
     m_loopCount->setSingleStep(1);
     m_loopCount->setSuffix(u" "_s + tr("loops"));
 

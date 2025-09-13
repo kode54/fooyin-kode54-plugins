@@ -46,6 +46,7 @@ public:
     Fooyin::AudioBuffer readBuffer(size_t bytes) override;
 
 private:
+    DecoderOptions m_options;
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
     midi_container* m_midiFile;

@@ -49,6 +49,7 @@ private:
     int vgmstream_init();
     void vgmstream_cleanup();
 
+    DecoderOptions m_options;
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
     QString m_path;

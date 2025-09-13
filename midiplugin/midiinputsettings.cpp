@@ -52,9 +52,8 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
     auto* lengthLayout = new QGridLayout(lengthGroup);
 
     auto* loopLabel     = new QLabel(tr("Loop count") + u":"_s, this);
-    auto* loopHintLabel = new QLabel(tr("(0 = infinite)"), this);
 
-    m_loopCount->setRange(0, 16);
+    m_loopCount->setRange(1, 16);
     m_loopCount->setSingleStep(1);
     m_loopCount->setSuffix(u" "_s + tr("times"));
  
@@ -66,11 +65,10 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
 
     int row{0};
     lengthLayout->addWidget(loopLabel, row, 0);
-    lengthLayout->addWidget(m_loopCount, row, 1);
-    lengthLayout->addWidget(loopHintLabel, row++, 2);
+    lengthLayout->addWidget(m_loopCount, row++, 1);
     lengthLayout->addWidget(fadeLabel, row, 0);
     lengthLayout->addWidget(m_fadeLength, row++, 1);
-    lengthLayout->setColumnStretch(3, 1);
+    lengthLayout->setColumnStretch(2, 1);
     lengthLayout->setRowStretch(row++, 1);
 
     auto* generalGroup  = new QGroupBox(tr("General"), this);

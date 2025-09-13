@@ -76,8 +76,15 @@ int VGMStreamDecoder::vgmstream_init()
     int loopCount = m_settings.value(LoopCount, DefaultLoopCount).toInt();
     double fadeLength = m_settings.value(FadeLength, DefaultFadeLength).toInt() / 1000.0;
 
-    if(loopCount < 0) {
-        loopCount = 0;
+    if(m_options & NoLooping) {
+        loopCount = 1;
+    }
+    else if(m_options & NoInfiniteLooping && isRepeatingTrack()) {
+        loopCount = DefaultLoopCount;
+    }
+
+    if(loopCount < 1) {
+        loopCount = 1;
     } else if(loopCount > 10) {
         loopCount = 10;
     }
@@ -85,8 +92,8 @@ int VGMStreamDecoder::vgmstream_init()
     libvgmstream_config_t vcfg = { 0 };
 
     vcfg.allow_play_forever = 1;
-    vcfg.play_forever = loopCount == 0;
-    vcfg.loop_count = loopCount ?: 2;
+    vcfg.play_forever = !(m_options & NoInfiniteLooping) && isRepeatingTrack();
+    vcfg.loop_count = loopCount;
     vcfg.fade_time = fadeLength;
     vcfg.fade_delay = 0;
     vcfg.ignore_loop = 0;
@@ -281,8 +288,8 @@ bool VGMStreamReader::init(const AudioSource& source)
     int loopCount = m_settings.value(LoopCount, DefaultLoopCount).toInt();
     double fadeLength = m_settings.value(FadeLength, DefaultFadeLength).toInt() / 1000.0;
 
-    if(loopCount < 0) {
-        loopCount = 0;
+    if(loopCount < 1) {
+        loopCount = 1;
     } else if(loopCount > 10) {
         loopCount = 10;
     }
@@ -290,8 +297,8 @@ bool VGMStreamReader::init(const AudioSource& source)
     m_vcfg = { 0 };
 
     m_vcfg.allow_play_forever = 1;
-    m_vcfg.play_forever = loopCount == 0;
-    m_vcfg.loop_count = loopCount ?: 2;
+    m_vcfg.play_forever = isRepeatingTrack();
+    m_vcfg.loop_count = loopCount;
     m_vcfg.fade_time = fadeLength;
     m_vcfg.fade_delay = 0;
     m_vcfg.ignore_loop = 0;

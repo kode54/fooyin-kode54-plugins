@@ -1395,6 +1395,8 @@ int XSFDecoder::emu_render(int16_t* buf, unsigned& count)
 
 std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& source, const Fooyin::Track& track, DecoderOptions options)
 {
+    m_options = options;
+
     /* Must call here, with possible m_version already set, in case something is
      * cleaning up a completely different PSF format than the one we're now opening.
      */ 
@@ -1477,7 +1479,9 @@ void XSFDecoder::seek(uint64_t pos)
 
 Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
 {
-    if(framesRead >= totalFrames)
+    bool repeatOne = !(m_options & NoInfiniteLooping) && isRepeatingTrack();
+
+    if(!repeatOne && framesRead >= totalFrames)
     {
         return {};
     }
@@ -1498,7 +1502,7 @@ Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
         }
         framesWritten += framesToWrite;
     }
-    if(framesWritten + framesRead > framesLength)
+    if(!repeatOne && (framesWritten + framesRead > framesLength))
     {
         if(framesFade)
         {

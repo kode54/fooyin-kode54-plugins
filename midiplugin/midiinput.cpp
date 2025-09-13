@@ -95,6 +95,13 @@ Fooyin::Track MIDIDecoder::changedTrack() const
  
 std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& source, const Fooyin::Track& track, DecoderOptions options)
 {
+    m_options = options;
+
+    const QByteArray data = source.device->readAll();
+    if(data.isEmpty()) {
+        return {};
+    }
+
     bmplayer = new BMPlayer;
     configurePlayer(bmplayer);
 
@@ -104,16 +111,11 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
     if(options & NoLooping) {
         loopCount = 1;
     }
-    if(options & NoInfiniteLooping && loopCount == 0) {
+    repeatOne = !(options & NoInfiniteLooping) && isRepeatingTrack();
+    if(options & NoInfiniteLooping && isRepeatingTrack()) {
         loopCount = DefaultLoopCount;
     }
-    repeatOne = loopCount == 0;
     
-    const QByteArray data = source.device->readAll();
-    if(data.isEmpty()) {
-        return {};
-    }
-
     std::vector<uint8_t> inputFile(data.begin(), data.end());
     m_midiFile = new midi_container;
     if(!midi_processor::process_file(inputFile, track.extension().toUtf8().constData(), *m_midiFile))
@@ -164,7 +166,7 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
     m_midiPlayer->setLoopMode((repeatOne || isLooped) ? (MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force) : 0);
 
     return m_format;
- }
+}
  
 void MIDIDecoder::start()
 {
