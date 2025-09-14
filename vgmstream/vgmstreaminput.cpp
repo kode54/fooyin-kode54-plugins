@@ -163,6 +163,8 @@ void VGMStreamDecoder::vgmstream_cleanup()
 
 std::optional<Fooyin::AudioFormat> VGMStreamDecoder::init(const Fooyin::AudioSource& source, const Fooyin::Track& track, DecoderOptions options)
 {
+    m_options = options;
+
     vgmstream_cleanup();
 
     if(track.isInArchive()) {
