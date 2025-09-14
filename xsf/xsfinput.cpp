@@ -1445,7 +1445,7 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
     totalFrames = framesLength + framesFade;
 
     return m_format;
- }
+}
  
 void XSFDecoder::start()
 {
@@ -1455,7 +1455,7 @@ void XSFDecoder::start()
         framesRead = 0;
     }
 }
- 
+
 void XSFDecoder::stop()
 {
     emu_cleanup();
