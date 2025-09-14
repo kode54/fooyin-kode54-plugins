@@ -183,8 +183,10 @@ std::optional<Fooyin::AudioFormat> VGMStreamDecoder::init(const Fooyin::AudioSou
 
 void VGMStreamDecoder::start()
 {
-    vgmstream_cleanup();
-    vgmstream_init();
+    if(!m_vgm || libvgmstream_get_play_position(m_vgm)) {
+        vgmstream_cleanup();
+        vgmstream_init();
+    }
 }
 
 void VGMStreamDecoder::stop()

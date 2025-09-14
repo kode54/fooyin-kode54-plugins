@@ -933,6 +933,7 @@ XSFDecoder::XSFDecoder()
     m_format.setChannelCount(2);
     m_emulator = NULL;
     m_emulatorExtra = NULL;
+    framesRead = -1;
 }
 
 QStringList XSFDecoder::extensions() const
@@ -1448,15 +1449,18 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
  
 void XSFDecoder::start()
 {
-    emu_cleanup();
-    emu_init();
-    framesRead = 0;
+    if(!m_emulator || framesRead != 0) {
+        emu_cleanup();
+        emu_init();
+        framesRead = 0;
+    }
 }
  
 void XSFDecoder::stop()
 {
     emu_cleanup();
     m_changedTrack = {};
+    framesRead = -1;
 }
 
 void XSFDecoder::seek(uint64_t pos)

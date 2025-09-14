@@ -71,6 +71,7 @@ MIDIDecoder::MIDIDecoder()
     m_format.setChannelCount(2);
     m_midiFile = NULL;
     m_midiPlayer = NULL;
+    framesRead = -1;
 }
 
 QStringList MIDIDecoder::extensions() const
@@ -150,6 +151,7 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         isLooped = false;
     }
 
+    framesRead = 0;
     framesLength = m_format.framesForDuration(framesLength);
     framesFade = m_format.framesForDuration(framesFade);
 
@@ -170,8 +172,10 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
  
 void MIDIDecoder::start()
 {
-    m_midiPlayer->Reset();
-    seek(0);
+    if(framesRead != 0) {
+        m_midiPlayer->Reset();
+        seek(0);
+    }
 }
  
 void MIDIDecoder::stop()
