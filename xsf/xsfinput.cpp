@@ -973,6 +973,7 @@ void XSFDecoder::emu_cleanup()
     } else if (m_version == 0x22) {
         if(m_emulator) {
             struct mCore * core = ( struct mCore * ) m_emulator;
+            mCoreConfigDeinit(&core->config);
             core->deinit(core);
         }
         if (m_emulatorExtra)
