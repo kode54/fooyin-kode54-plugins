@@ -53,6 +53,8 @@
 #include "psflib/psflib.h"
 #include "psflib/psf2fs.h"
 
+#include "snes9x.h"
+
 #include "hebios.h"
 
 #include <zlib.h>
@@ -856,6 +858,100 @@ static int ncsf_loader(void *context, const uint8_t *exe, size_t exe_size,
 	return 0;
 }
 
+struct s9x_loaderwork {
+    std::vector<uint8_t> rom, sram;
+    bool first;
+    unsigned base;
+};
+
+class s9x_BUFFER {
+public:
+    struct S9xState st;
+    std::vector<uint8_t> buf;
+    unsigned fil, cur, len;
+    s9x_BUFFER() : buf(), fil(0), cur(0), len(0) { }
+    bool Init() {
+        if (!this->buf.empty())
+            this->buf.clear();
+        this->len = 2 * 2 * 48000 / 5;
+        this->buf.resize(len, 0);
+        this->fil = this->cur = 0;
+        return true;
+    }
+    void Fill() {
+        S9xSyncSound(&st);
+        S9xMainLoop(&st);
+        this->Mix();
+    }
+    void Mix() {
+        unsigned bytes = (S9xGetSampleCount(&st) << 1) & ~3;
+        unsigned bleft = (this->len - this->fil) & ~3;
+        if (!bytes)
+            return;
+        if (bytes > bleft)
+            bytes = bleft;
+        std::fill_n(&this->buf[this->fil], bytes, 0);
+        S9xMixSamples(&st, &this->buf[this->fil], bytes >> 1);
+        this->fil += bytes;
+    }
+};
+
+static int MapSNSFSection(s9x_loaderwork *loaderwork,
+                          const uint8_t *section, size_t section_size) {
+    if (section_size < 8) return -1;
+
+    auto &data = loaderwork->rom;
+
+    uint32_t offset = get_le32(&section[0]), size = get_le32(&section[4]), finalSize = size + offset;
+
+    if (size > section_size - 8) return -1;
+
+    if (!loaderwork->first) {
+        loaderwork->first = true;
+        loaderwork->base = offset;
+    }
+    else
+        offset += loaderwork->base;
+    offset &= 0x1FFFFFFF;
+    if (data.empty())
+        data.resize(finalSize, 0);
+    else if (data.size() < size + offset)
+        data.resize(offset + finalSize);
+    std::copy_n(&section[8], size, &data[offset]);
+
+    return 0;
+}
+
+static int MapSNSF(void *context, const uint8_t *exe, size_t exe_size,
+                   const uint8_t *reserved, size_t reserved_size) {
+    s9x_loaderwork *loaderwork = (s9x_loaderwork *)context;
+
+    if (reserved_size) {
+        size_t reservedPosition = 0;
+        while (reservedPosition + 8 < reserved_size) {
+            uint32_t type = get_le32(&reserved[reservedPosition]), size = get_le32(&reserved[reservedPosition + 4]);
+            if (!type) {
+                if (loaderwork->sram.empty())
+                    loaderwork->sram.resize(0x20000, 0xFF);
+                if (reservedPosition + 8 + size > reserved_size)
+                    return -1;
+                uint32_t offset = get_le32(&reserved[reservedPosition + 8]);
+                if (size > 4 && loaderwork->sram.size() > offset) {
+                    auto len = loaderwork->sram.size() - offset;
+                    if (size - 4 < len) len=size - 4;
+                    std::copy_n(&reserved[reservedPosition + 12], len, &loaderwork->sram[offset]);
+                }
+            }
+            reservedPosition += size + 8;
+        }
+    }
+
+    if (exe_size)
+        return MapSNSFSection(loaderwork, exe, exe_size);
+
+    return 0;
+}
+
 static void * psf_file_fopen( void *context, const char * uri )
 {
     (void)context;
@@ -906,6 +1002,9 @@ get_srate(int version)
         case 2:
             return 48000;
 
+        case 0x23:
+            return 32000;
+
         case 0x41:
             return 24038;
     }
@@ -920,7 +1019,7 @@ psf_error_log(void * unused, const char * message) {
 
 QStringList fileExtensions()
 {
-    static const QStringList extensions = {u"psf"_s, u"minipsf"_s, u"psf2"_s, u"minipsf2"_s, u"ssf"_s, u"minissf"_s, u"dsf"_s, u"minidsf"_s, u"qsf"_s, u"miniqsf"_s, u"usf"_s, u"miniusf"_s, u"gsf"_s, u"minigsf"_s, u"2sf"_s, u"mini2sf"_s, u"ncsf"_s, u"minincsf"_s};
+    static const QStringList extensions = {u"psf"_s, u"minipsf"_s, u"psf2"_s, u"minipsf2"_s, u"ssf"_s, u"minissf"_s, u"dsf"_s, u"minidsf"_s, u"qsf"_s, u"miniqsf"_s, u"usf"_s, u"miniusf"_s, u"gsf"_s, u"minigsf"_s, u"2sf"_s, u"mini2sf"_s, u"ncsf"_s, u"minincsf"_s, u"snsf"_s, u"minisnsf"_s};
     return extensions;
 }
  
@@ -981,6 +1080,15 @@ void XSFDecoder::emu_cleanup()
             struct gsf_running_state * rstate = ( struct gsf_running_state * ) m_emulatorExtra;
             free( rstate->rom );
             free( rstate );
+        }
+    } else if (m_version == 0x23) {
+        if(m_emulator) {
+            s9x_BUFFER * buffer = (s9x_BUFFER *) m_emulator;
+            S9xState *st = &buffer->st;
+            S9xReset(st);
+            st->Memory.Deinit();
+            S9xDeinitAPU(st);
+            delete buffer;
         }
     } else if (m_version == 0x24) {
         if(m_emulator) {
@@ -1183,6 +1291,51 @@ int XSFDecoder::emu_init() {
         m_emulator = (void *) core;
         m_emulatorExtra = (void *) rstate;
     }
+    else if (m_version == 0x23)
+    {
+        s9x_loaderwork loaderwork;
+
+        if(psf_load(m_path.toUtf8().constData(), &psf_file_system, 0x23, MapSNSF, &loaderwork, 0, 0, 0, psf_error_log, 0) <= 0)
+            return -1;
+
+        if(loaderwork.rom.empty())
+            return -1;
+
+        s9x_BUFFER *buffer = new s9x_BUFFER;
+
+        S9xState *st = &buffer->st;
+
+        st->Settings.SoundSync = true;
+        st->Settings.Mute = false;
+        st->Settings.SoundPlaybackRate = 32000;
+        st->Settings.InterpolationMethod = 2; // Gaussian
+
+        if(!st->Memory.Init(st))
+            return -1;
+
+        S9xInitAPU(st);
+        S9xInitSound(st, 10);
+
+        if (!buffer->Init()) {
+            S9xReset(st);
+            st->Memory.Deinit();
+            S9xDeinitAPU(st);
+            delete buffer;
+            return -1;
+        }
+
+        if (!st->Memory.LoadROMSNSF(&loaderwork.rom[0], (int32_t) loaderwork.rom.size(), !loaderwork.sram.empty() ? &loaderwork.sram[0] : nullptr, (int32_t) loaderwork.sram.size())) {
+            S9xReset(st);
+            st->Memory.Deinit();
+            S9xDeinitAPU(st);
+            delete buffer;
+            return -1;
+        }
+
+        S9xSetSoundMute(st, false);
+
+        m_emulator = (void *) buffer;
+    }
     else if (m_version == 0x24)
     {
         struct twosf_loader_state state;
@@ -1348,6 +1501,41 @@ int XSFDecoder::emu_render(int16_t* buf, unsigned& count)
             }
             while (frames_to_render);
             count -= (unsigned) frames_to_render;
+        }
+            break;
+
+        case 0x23:
+        {
+            s9x_BUFFER *buffer = (s9x_BUFFER *) m_emulator;
+            unsigned bytes = count << 2;
+            unsigned offset = 0;
+            unsigned giveup = 60 * 30;
+            while (bytes) {
+                unsigned remain = buffer->fil - buffer->cur;
+                while (!remain) {
+                    buffer->cur = buffer->fil = 0;
+                    buffer->Fill();
+
+                    remain = buffer->fil - buffer->cur;
+                    if(!remain) {
+                        if(giveup)
+                            --giveup;
+                        else
+                            break;
+                    }
+                }
+                if(!remain)
+                    break;
+                unsigned len = remain;
+                if (len > bytes)
+                    len = bytes;
+                if (buf)
+                    std::copy_n(&buffer->buf[buffer->cur], len, &((uint8_t *)buf)[offset]);
+                bytes -= len;
+                offset += len;
+                buffer->cur += len;
+            }
+            count = offset >> 2;
         }
             break;
 

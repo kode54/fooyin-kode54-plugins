@@ -17,6 +17,7 @@ add_subdirectory(highly_quixotic)
 add_subdirectory(lazyusf2)
 add_subdirectory(vio2sf)
 add_subdirectory(sseqplayer)
+add_subdirectory(snes9x)
 
 create_fooyin_plugin(
     xsf
@@ -28,6 +29,7 @@ create_fooyin_plugin(
             lazyusf2
             vio2sf
             sseqplayer
+            snes9x
             mgba
     SOURCES xsfinputplugin.cpp
             xsfinputplugin.h

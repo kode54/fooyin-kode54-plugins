@@ -22,3 +22,6 @@
 [submodule "xsf/sseqplayer"]
 	path = xsf/sseqplayer
 	url = https://bitbucket.org/losnoco/sseqplayer.git
+[submodule "xsf/snes9x"]
+	path = xsf/snes9x
+	url = https://bitbucket.org/losnoco/libsnes9x
