@@ -862,6 +862,7 @@ struct s9x_loaderwork {
     std::vector<uint8_t> rom, sram;
     bool first;
     unsigned base;
+    s9x_loaderwork() : first(false) { }
 };
 
 class s9x_BUFFER {
