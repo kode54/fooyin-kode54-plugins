@@ -916,7 +916,7 @@ static int MapSNSFSection(s9x_loaderwork *loaderwork,
     if (data.empty())
         data.resize(finalSize, 0);
     else if (data.size() < size + offset)
-        data.resize(offset + finalSize);
+        data.resize(size + offset);
     std::copy_n(&section[8], size, &data[offset]);
 
     return 0;
