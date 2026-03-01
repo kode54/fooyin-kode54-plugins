@@ -38,4 +38,5 @@ create_fooyin_plugin(
             xsfinputdefs.h
             xsfinputsettings.cpp
             xsfinputsettings.h
+            circular_buffer.h
 )

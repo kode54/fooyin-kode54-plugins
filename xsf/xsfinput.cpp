@@ -1132,6 +1132,10 @@ void XSFDecoder::emu_cleanup()
 }
 
 int XSFDecoder::emu_init() {
+    silenceSeconds = 5;
+
+    usfRemoveSilence = false;
+
     if (m_version == 1 || m_version == 2)
     {
         m_emulator = malloc(psx_get_state_size(m_version));
@@ -1176,6 +1180,8 @@ int XSFDecoder::emu_init() {
 
             psx_set_readfile(m_emulator, virtual_readfile, m_emulatorExtra);
         }
+
+        silenceSeconds = 30;
 
         void *pIOP = psx_get_iop_state(m_emulator);
         iop_set_compat(pIOP, IOP_COMPAT_HARSH);
@@ -1234,6 +1240,9 @@ int XSFDecoder::emu_init() {
 
         usf_set_compare(state.emu_state, state.enablecompare);
         usf_set_fifo_full(state.emu_state, state.enablefifofull);
+
+        usfRemoveSilence = true;
+        silenceSeconds = 10;
     }
     else if (m_version == 0x22)
     {
@@ -1449,7 +1458,38 @@ int XSFDecoder::emu_init() {
 
     framesRead = 0;
 
+    silence_test_buffer.resize(sampleRate * silenceSeconds * 2);
+
+    if (!fill_buffer()) {
+        return -1;
+    }
+
+    silence_test_buffer.remove_leading_silence();
+
     return 0;
+}
+
+bool XSFDecoder::fill_buffer()
+{
+    long _totalFrames = totalFrames;
+    if (!_totalFrames) // likely init stage
+        _totalFrames = silenceSeconds * sampleRate;
+    long frames_left = _totalFrames - framesRead - silence_test_buffer.data_available() / 2;
+    long free_space = silence_test_buffer.free_space() / 2;
+    if (repeatOne)
+        frames_left = free_space;
+    if (free_space > frames_left)
+        free_space = frames_left;
+    while (free_space > 0) {
+        unsigned long samples_to_write = 0;
+        int16_t *buf = silence_test_buffer.get_write_ptr(samples_to_write);
+        unsigned frames = (unsigned) samples_to_write / 2;
+        if (emu_render(buf, frames) < 0)
+            return false;
+        silence_test_buffer.samples_written(frames * 2);
+        free_space -= frames;
+    }
+    return !silence_test_buffer.test_silence();
 }
 
 int XSFDecoder::emu_render(int16_t* buf, unsigned& count)
@@ -1680,7 +1720,23 @@ void XSFDecoder::seek(uint64_t pos)
     if(framesTarget < framesRead) {
         emu_cleanup();
         emu_init();
+        if(usfRemoveSilence) {
+            silence_test_buffer.remove_leading_silence();
+            usfRemoveSilence = false;
+        }
     }
+
+    unsigned long buffered_samples = silence_test_buffer.data_available() / 2;
+    if(buffered_samples >= (framesTarget - framesRead)) {
+        unsigned long frame = framesTarget - framesRead;
+        silence_test_buffer.read(NULL, frame * 2);
+        framesRead += frame;
+        return;
+    } else if(buffered_samples) {
+        silence_test_buffer.read(NULL, buffered_samples * 2);
+        framesRead += buffered_samples;
+    }
+
     while(framesRead < framesTarget) {
         unsigned toSkip = BufferLen;
         if(toSkip > framesTarget - framesRead) toSkip = (unsigned)(framesTarget - framesRead);
@@ -1698,6 +1754,17 @@ Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
         return {};
     }
 
+    if(!m_emulator) {
+        if(emu_init() < 0)
+            return {};
+    } else if(!fill_buffer())
+        return {};
+
+    if(usfRemoveSilence) {
+        silence_test_buffer.remove_leading_silence();
+        usfRemoveSilence = false;
+    }
+
     const auto startTime = static_cast<uint64_t>(m_format.durationForFrames(framesRead));
 
     AudioBuffer buffer{m_format, startTime};
@@ -1706,12 +1773,16 @@ Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
     const int frames = m_format.framesForBytes(static_cast<int>(bytes));
     int framesWritten{0};
     while(framesWritten < frames) {
-        unsigned framesToWrite = std::min(frames - framesWritten, BufferLen);
+        unsigned long written = silence_test_buffer.data_available() / 2;
+        if(!written) {
+            if(!fill_buffer())
+                break;
+            continue;
+        }
+        unsigned framesToWrite = std::min(frames - framesWritten, (int)written);
         const int bufferPos     = m_format.bytesForFrames(framesWritten);
         int16_t* framesOut = (int16_t *)(buffer.data() + bufferPos);
-        if(emu_render(framesOut, framesToWrite) < 0) {
-            return {};
-        }
+        silence_test_buffer.read(framesOut, framesToWrite * 2);
         framesWritten += framesToWrite;
     }
     if(!repeatOne && (framesWritten + framesRead > framesLength))

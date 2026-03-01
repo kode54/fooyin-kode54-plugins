@@ -22,6 +22,8 @@
 #include <fooyin/core/coresettings.h>
 #include <fooyin/core/engine/audioinput.h>
 
+#include "circular_buffer.h"
+
 namespace Fooyin::XSFInput {
 class XSFDecoder : public Fooyin::AudioDecoder
 {
@@ -46,6 +48,8 @@ private:
     int emu_render(int16_t* buf, unsigned& pairs);
     void emu_cleanup();
 
+    bool fill_buffer();
+
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
     QString m_path;
@@ -54,7 +58,10 @@ private:
     void* m_emulatorExtra;
     Fooyin::Track m_changedTrack;
 
+    bool usfRemoveSilence;
     int sampleRate;
+    long silenceSeconds;
+    circular_buffer<int16_t> silence_test_buffer;
 
     bool repeatOne;
     long totalFrames;
