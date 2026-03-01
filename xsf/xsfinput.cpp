@@ -1447,6 +1447,8 @@ int XSFDecoder::emu_init() {
         return -1;
     }
 
+    framesRead = 0;
+
     return 0;
 }
 
@@ -1650,7 +1652,6 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
         tag_fade_ms = m_settings.value(FadeLength, DefaultFadeLength).toInt();
     }
 
-    framesRead = 0;
     framesLength = m_format.framesForDuration(tag_song_ms);
     framesFade = m_format.framesForDuration(tag_fade_ms);
     totalFrames = framesLength + framesFade;
@@ -1679,7 +1680,6 @@ void XSFDecoder::seek(uint64_t pos)
     if(framesTarget < framesRead) {
         emu_cleanup();
         emu_init();
-        framesRead = 0;
     }
     while(framesRead < framesTarget) {
         unsigned toSkip = BufferLen;
