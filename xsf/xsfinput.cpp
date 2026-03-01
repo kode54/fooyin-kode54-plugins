@@ -1176,6 +1176,9 @@ int XSFDecoder::emu_init() {
 
             psx_set_readfile(m_emulator, virtual_readfile, m_emulatorExtra);
         }
+
+        void *pIOP = psx_get_iop_state(m_emulator);
+        iop_set_compat(pIOP, IOP_COMPAT_HARSH);
     }
     else if (m_version == 0x11 || m_version == 0x12)
     {
