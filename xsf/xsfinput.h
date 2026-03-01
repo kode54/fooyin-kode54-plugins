@@ -54,6 +54,8 @@ private:
     void* m_emulatorExtra;
     Fooyin::Track m_changedTrack;
 
+    int sampleRate;
+
     bool repeatOne;
     long totalFrames;
 	long framesLength;

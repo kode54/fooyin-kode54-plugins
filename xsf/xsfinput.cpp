@@ -1612,17 +1612,35 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
 
     free_tags(info_state.tags);
 
+    switch(psf_version) {
+        case 1:
+        case 2:
+        case 0x11:
+        case 0x12:
+        case 0x21:
+        case 0x22:
+        case 0x23:
+        case 0x24:
+        case 0x25:
+        case 0x41:
+            break;
+
+        default:
+            return {};
+    }
+
+    sampleRate = get_srate(psf_version);
+    if(sampleRate < 0) {
+        return {};
+    }
+
     m_version = psf_version;
 
     if(emu_init() < 0) {
         return {};
     }
 
-    int srate = get_srate(psf_version);
-    if(srate < 0) {
-        return {};
-    }
-    m_format.setSampleRate(srate);
+    m_format.setSampleRate(sampleRate);
 
     int tag_song_ms = info_state.tag_song_ms;
     int tag_fade_ms = info_state.tag_fade_ms;
@@ -1645,7 +1663,6 @@ void XSFDecoder::start()
     if(!m_emulator || framesRead != 0) {
         emu_cleanup();
         emu_init();
-        framesRead = 0;
     }
 }
 
