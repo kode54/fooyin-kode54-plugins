@@ -1377,35 +1377,35 @@ int XSFDecoder::emu_init() {
 
         m_emulatorExtra = state.rom;
         state.rom = 0; // So twosf_loader_state doesn't free it when it goes out of scope
-	}
+    }
     else if (m_version == 0x25)
     {
-		struct ncsf_loader_state *state = new struct ncsf_loader_state;
+        struct ncsf_loader_state *state = new struct ncsf_loader_state;
 
-		if(psf_load(m_path.toUtf8().constData(), &psf_file_system, 0x25, ncsf_loader, state, 0, 0, 1, psf_error_log, 0) <= 0) {
-			delete state;
-			return -1;
-		}
+        if(psf_load(m_path.toUtf8().constData(), &psf_file_system, 0x25, ncsf_loader, state, 0, 0, 1, psf_error_log, 0) <= 0) {
+            delete state;
+            return -1;
+        }
 
-		Player *player = new Player;
+        Player *player = new Player;
 
-		player->interpolation = INTERPOLATION_SINC;
+        player->interpolation = INTERPOLATION_SINC;
 
-		PseudoFile file;
-		file.data = &state->sdatData;
+        PseudoFile file;
+        file.data = &state->sdatData;
 
-		state->sdat.reset(new SDAT(file, state->sseq));
+        state->sdat.reset(new SDAT(file, state->sseq));
 
-		auto *sseqToPlay = state->sdat->sseq.get();
+        auto *sseqToPlay = state->sdat->sseq.get();
 
-		player->sampleRate = 44100;
-		player->Setup(sseqToPlay);
-		player->Timer();
+        player->sampleRate = 44100;
+        player->Setup(sseqToPlay);
+        player->Timer();
 
-		state->outputBuffer.resize(BufferLen * sizeof(int16_t) * 2);
+        state->outputBuffer.resize(BufferLen * sizeof(int16_t) * 2);
 
-		m_emulator = (void *) player;
-		m_emulatorExtra = (void *) state;
+        m_emulator = (void *) player;
+        m_emulatorExtra = (void *) state;
     }
     else if (m_version == 0x41)
     {
