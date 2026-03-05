@@ -117,7 +117,7 @@ int VGMStreamDecoder::vgmstream_init()
             break;
 
         case LIBVGMSTREAM_SFMT_PCM24:
-            format = Fooyin::SampleFormat::S24;
+            format = Fooyin::SampleFormat::S24In32;
             break;
 
         case LIBVGMSTREAM_SFMT_PCM32:
@@ -209,6 +209,8 @@ Fooyin::AudioBuffer VGMStreamDecoder::readBuffer(size_t bytes)
     AudioBuffer buffer{m_format, startTime};
     buffer.resize(bytes);
 
+    bool is24bit = m_vgm->format->sample_format == LIBVGMSTREAM_SFMT_PCM24;
+
     size_t bytesDone = 0;
     while(bytesDone < bytes) {
         if(!bytesRemain) {
@@ -223,6 +225,9 @@ Fooyin::AudioBuffer VGMStreamDecoder::readBuffer(size_t bytes)
                 if(!bytesRemain)
                     continue;
 
+                if(is24bit)
+                    bytesRemain = (bytesRemain / 3) * 4;
+
                 bytePos = 0;
 
                 break;
@@ -232,10 +237,26 @@ Fooyin::AudioBuffer VGMStreamDecoder::readBuffer(size_t bytes)
         const size_t bytesFree = bytes - bytesDone;
         const size_t maxBytes = std::min(bytesRemain, bytesFree);
         if(maxBytes) {
-            memcpy(buffer.data() + bytesDone, (uint8_t*)(m_vgm->decoder->buf) + bytePos, maxBytes);
-            bytesRemain -= maxBytes;
-            bytePos += maxBytes;
-            bytesDone += maxBytes;
+            if(!is24bit) {
+                memcpy(buffer.data() + bytesDone, (uint8_t*)(m_vgm->decoder->buf) + bytePos, maxBytes);
+                bytesRemain -= maxBytes;
+                bytePos += maxBytes;
+                bytesDone += maxBytes;
+            } else {
+                // Stupid crap
+                typedef union {
+                    int i:24;
+                    uint8_t b[3];
+                } int24_union_t;
+                for(size_t i = 0; i < maxBytes; i += 4) {
+                    int24_union_t *in = (int24_union_t *)(((uint8_t*)m_vgm->decoder->buf) + bytePos);
+                    int32_t *out = (int32_t *)(((uint8_t*)buffer.data()) + bytesDone);
+                    *out = in->i;
+                    bytePos += 3;
+                    bytesDone += 4;
+                }
+                bytesRemain -= maxBytes;
+            }
         } else if(bytesFree && bytesDone) {
             memset(buffer.data() + bytesDone, 0, bytesFree);
             break;
