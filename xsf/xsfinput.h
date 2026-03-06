@@ -57,6 +57,7 @@ private:
     void* m_emulator;
     void* m_emulatorExtra;
     Fooyin::Track m_changedTrack;
+    bool m_isDecoding;
 
     bool usfRemoveSilence;
     int sampleRate;

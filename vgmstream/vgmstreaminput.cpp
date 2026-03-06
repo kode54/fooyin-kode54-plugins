@@ -49,6 +49,8 @@ namespace Fooyin::VGMStreamInput {
 VGMStreamDecoder::VGMStreamDecoder()
     : m_vgm{NULL}
     , m_sf{NULL}
+    , m_repeatTrack{false}
+    , m_isDecoding{false}
 { }
 
 QStringList VGMStreamDecoder::extensions() const
@@ -79,9 +81,6 @@ int VGMStreamDecoder::vgmstream_init()
     if(m_options & NoLooping) {
         loopCount = 1;
     }
-    else if(m_options & NoInfiniteLooping && isRepeatingTrack()) {
-        loopCount = DefaultLoopCount;
-    }
 
     if(loopCount < 1) {
         loopCount = 1;
@@ -92,7 +91,7 @@ int VGMStreamDecoder::vgmstream_init()
     libvgmstream_config_t vcfg = { 0 };
 
     vcfg.allow_play_forever = 1;
-    vcfg.play_forever = !(m_options & NoInfiniteLooping) && isRepeatingTrack();
+    vcfg.play_forever = m_repeatTrack;
     vcfg.loop_count = loopCount;
     vcfg.fade_time = fadeLength;
     vcfg.fade_delay = 0;
@@ -143,6 +142,8 @@ int VGMStreamDecoder::vgmstream_init()
     m_format.setSampleRate(m_vgm->format->sample_rate);
     m_format.setChannelCount(m_vgm->format->channels);
 
+    libvgmstream_seek(m_vgm, 0);
+
     bytePos = 0;
     bytesRemain = 0;
 
@@ -164,6 +165,7 @@ void VGMStreamDecoder::vgmstream_cleanup()
 std::optional<Fooyin::AudioFormat> VGMStreamDecoder::init(const Fooyin::AudioSource& source, const Fooyin::Track& track, DecoderOptions options)
 {
     m_options = options;
+    m_repeatTrack = !(options & NoInfiniteLooping) && isRepeatingTrack();
 
     vgmstream_cleanup();
 
@@ -183,16 +185,14 @@ std::optional<Fooyin::AudioFormat> VGMStreamDecoder::init(const Fooyin::AudioSou
 
 void VGMStreamDecoder::start()
 {
-    if(!m_vgm || libvgmstream_get_play_position(m_vgm)) {
-        vgmstream_cleanup();
-        vgmstream_init();
-    }
+    m_isDecoding = true;
 }
 
 void VGMStreamDecoder::stop()
 {
     vgmstream_cleanup();
     m_changedTrack = {};
+    m_isDecoding = false;
 }
 
 void VGMStreamDecoder::seek(uint64_t pos)
@@ -204,6 +204,10 @@ void VGMStreamDecoder::seek(uint64_t pos)
 
 Fooyin::AudioBuffer VGMStreamDecoder::readBuffer(size_t bytes)
 {
+    if(!m_isDecoding) {
+        return {};
+    }
+
     const auto startTime = static_cast<uint64_t>(m_format.durationForFrames(libvgmstream_get_play_position(m_vgm)));
 
     AudioBuffer buffer{m_format, startTime};

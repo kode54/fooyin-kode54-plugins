@@ -1034,6 +1034,7 @@ XSFDecoder::XSFDecoder()
     m_emulator = NULL;
     m_emulatorExtra = NULL;
     framesRead = -1;
+    m_isDecoding = false;
 }
 
 QStringList XSFDecoder::extensions() const
@@ -1701,10 +1702,7 @@ std::optional<Fooyin::AudioFormat> XSFDecoder::init(const Fooyin::AudioSource& s
  
 void XSFDecoder::start()
 {
-    if(!m_emulator || framesRead != 0) {
-        emu_cleanup();
-        emu_init();
-    }
+    m_isDecoding = true;
 }
 
 void XSFDecoder::stop()
@@ -1712,6 +1710,7 @@ void XSFDecoder::stop()
     emu_cleanup();
     m_changedTrack = {};
     framesRead = -1;
+    m_isDecoding = false;
 }
 
 void XSFDecoder::seek(uint64_t pos)
@@ -1749,6 +1748,10 @@ void XSFDecoder::seek(uint64_t pos)
 
 Fooyin::AudioBuffer XSFDecoder::readBuffer(size_t bytes)
 {
+    if(!m_isDecoding) {
+        return {};
+    }
+
     if(!repeatOne && framesRead >= totalFrames)
     {
         return {};

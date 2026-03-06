@@ -54,6 +54,8 @@ private:
     Fooyin::AudioFormat m_format;
     QString m_path;
     int m_subsong;
+    bool m_isDecoding;
+    bool m_repeatTrack;
     size_t bytePos, bytesRemain;
     libvgmstream_t* m_vgm;
     libstreamfile_t* m_sf;

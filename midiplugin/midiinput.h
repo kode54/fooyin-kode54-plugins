@@ -53,6 +53,7 @@ private:
     BMPlayer* bmplayer;
     MIDIPlayer* m_midiPlayer;
     Fooyin::Track m_changedTrack;
+    bool m_isDecoding;
 
     bool repeatOne;
     long totalFrames;
