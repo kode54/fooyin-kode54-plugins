@@ -326,7 +326,7 @@ bool VGMStreamReader::init(const AudioSource& source)
     m_vcfg = { 0 };
 
     m_vcfg.allow_play_forever = 1;
-    m_vcfg.play_forever = isRepeatingTrack();
+    m_vcfg.play_forever = 0;
     m_vcfg.loop_count = loopCount;
     m_vcfg.fade_time = fadeLength;
     m_vcfg.fade_delay = 0;
