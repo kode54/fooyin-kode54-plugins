@@ -25,6 +25,18 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::MIDIInput {
+namespace {
+class MIDIInputPluginSettingsProvider : public Fooyin::PluginSettingsProvider
+{
+public:
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new MIDIInputSettings(parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+};
+} // namespace
 
 QString MIDIInputPlugin::inputName() const
 {
@@ -43,16 +55,9 @@ Fooyin::InputCreator MIDIInputPlugin::inputCreator() const
     return creator;
 }
 
-bool MIDIInputPlugin::hasSettings() const
+std::unique_ptr<Fooyin::PluginSettingsProvider> MIDIInputPlugin::settingsProvider() const
 {
-    return true;
-}
-
-void MIDIInputPlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new MIDIInputSettings(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    return std::make_unique<MIDIInputPluginSettingsProvider>();
 }
 }
 

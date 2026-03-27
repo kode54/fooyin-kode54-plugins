@@ -25,6 +25,18 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::XSFInput {
+namespace {
+class XSFInputPluginSettingsProvider : public Fooyin::PluginSettingsProvider
+{
+public:
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new XSFInputSettings(parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+};
+} // namespace
 
 QString XSFInputPlugin::inputName() const
 {
@@ -43,16 +55,9 @@ Fooyin::InputCreator XSFInputPlugin::inputCreator() const
     return creator;
 }
 
-bool XSFInputPlugin::hasSettings() const
+std::unique_ptr<Fooyin::PluginSettingsProvider> XSFInputPlugin::settingsProvider() const
 {
-    return true;
-}
-
-void XSFInputPlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new XSFInputSettings(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    return std::make_unique<XSFInputPluginSettingsProvider>();
 }
 }
 

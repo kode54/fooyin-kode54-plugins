@@ -20,23 +20,22 @@
 #pragma once
 
 #include <fooyin/core/engine/inputplugin.h>
-#include <fooyin/core/plugins/coreplugin.h>
 #include <fooyin/core/plugins/plugin.h>
+#include <fooyin/gui/plugins/pluginconfigguiplugin.h>
 
 namespace Fooyin::VGMStreamInput {
 class VGMStreamInputPlugin : public QObject,
                        public Fooyin::Plugin,
-                       public Fooyin::InputPlugin
+                       public Fooyin::InputPlugin,
+                       public Fooyin::PluginConfigGuiPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.fooyin.fooyin.plugin/1.0" FILE "vgmstreaminput.json")
-    Q_INTERFACES(Fooyin::Plugin Fooyin::InputPlugin)
+    Q_INTERFACES(Fooyin::Plugin Fooyin::InputPlugin Fooyin::PluginConfigGuiPlugin)
 
 public:
     [[nodiscard]] QString inputName() const override;
     [[nodiscard]] Fooyin::InputCreator inputCreator() const override;
-
-    [[nodiscard]] bool hasSettings() const override;
-    void showSettings(QWidget* parent) override;
+    [[nodiscard]] std::unique_ptr<Fooyin::PluginSettingsProvider> settingsProvider() const override;
 };
 }

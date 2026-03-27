@@ -25,6 +25,18 @@
 using namespace Qt::StringLiterals;
 
 namespace Fooyin::VGMStreamInput {
+namespace {
+class VGMStreamInputPluginSettingsProvider : public Fooyin::PluginSettingsProvider
+{
+public:
+    void showSettings(QWidget* parent) override
+    {
+        auto* dialog = new VGMStreamInputSettings(parent);
+        dialog->setAttribute(Qt::WA_DeleteOnClose);
+        dialog->show();
+    }
+};
+} // namespace
 
 QString VGMStreamInputPlugin::inputName() const
 {
@@ -43,16 +55,9 @@ Fooyin::InputCreator VGMStreamInputPlugin::inputCreator() const
     return creator;
 }
 
-bool VGMStreamInputPlugin::hasSettings() const
+std::unique_ptr<Fooyin::PluginSettingsProvider> VGMStreamInputPlugin::settingsProvider() const
 {
-    return true;
-}
-
-void VGMStreamInputPlugin::showSettings(QWidget* parent)
-{
-    auto* dialog = new VGMStreamInputSettings(parent);
-    dialog->setAttribute(Qt::WA_DeleteOnClose);
-    dialog->show();
+    return std::make_unique<VGMStreamInputPluginSettingsProvider>();
 }
 }
 
