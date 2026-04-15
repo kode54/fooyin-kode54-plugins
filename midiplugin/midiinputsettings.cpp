@@ -118,7 +118,7 @@ void MIDIInputSettings::accept()
  
 void MIDIInputSettings::getSoundfontPath()
 {
-    const QString soundfontPath = QFileDialog::getOpenFileName(this, tr("Select Soundfont bank"), QDir::homePath(), tr("Soundfont Banks (*.sf2 *.sf2pack *.sf3)"));
+    const QString soundfontPath = QFileDialog::getOpenFileName(this, tr("Select Soundfont bank"), QDir::homePath(), tr("Soundfont Banks (*.sf2 *.sf2pack *.sf3 *.sf4 *.dls)"));
     if(soundfontPath.isEmpty()) {
         return;
     }

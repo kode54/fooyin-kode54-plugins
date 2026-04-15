@@ -166,6 +166,17 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         return {};
     }
 
+    {
+        const uint8_t *embedded_bank = NULL;
+        size_t bank_size = 0;
+        uint16_t bank_offset = 0;
+        if (m_midiFile->get_embedded_bank(&embedded_bank, &bank_size, &bank_offset)) {
+            if (embedded_bank && bank_size) {
+                spessaplayer->setEmbeddedBank(embedded_bank, bank_size, bank_offset);
+            }
+        }
+    }
+
     m_midiFile->scan_for_loops(true, true, true, true);
 
     framesLength = m_midiFile->get_timestamp_end(0, true);
@@ -173,38 +184,29 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
     loopStart = m_midiFile->get_timestamp_loop_start(0, true);
     loopEnd = m_midiFile->get_timestamp_loop_end(0, true);
 
-    if(loopStart == ~0UL) loopStart = 0;
-    if(loopEnd == ~0UL) loopEnd = framesLength;
+    if(loopStart == (double)(~0UL)) loopStart = 0;
+    if(loopEnd == (double)(~0UL)) loopEnd = framesLength;
 
     bool isLooped;
     if(loopStart != 0 || loopEnd != framesLength)
     {
-        framesFade = m_settings.value(FadeLengthSetting, DefaultFadeLength).toInt();
+        framesFade = m_settings.value(FadeLengthSetting, DefaultFadeLength).toInt() / 1000.0;
         framesLength = loopStart + (loopEnd - loopStart) * loopCount;
         isLooped = true;
     } else {
-        framesLength += 1000;
+        framesLength += 1.0;
         framesFade = 0;
         isLooped = false;
     }
 
     framesRead = 0;
-    framesLength = m_format.framesForDuration(framesLength);
-    framesFade = m_format.framesForDuration(framesFade);
+    framesLength = round(framesLength * SampleRate);
+    framesFade = round(framesFade * SampleRate);
 
     totalFrames = framesLength + framesFade;
 
     unsigned int loop_mode = framesFade ? MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force : 0;
     unsigned int clean_flags = midi_container::clean_flag_emidi;
-
-    const uint8_t *embedded_bank = NULL;
-    size_t bank_size = 0;
-    uint16_t bank_offset = 0;
-    if (m_midiFile->get_embedded_bank(&embedded_bank, &bank_size, &bank_offset)) {
-        if (embedded_bank && bank_size) {
-            spessaplayer->setEmbeddedBank(embedded_bank, bank_size, bank_offset);
-        }
-    }
 
     if(!m_midiPlayer->Load(*m_midiFile, 0, loop_mode, clean_flags))
     {
@@ -274,7 +276,7 @@ Fooyin::AudioBuffer MIDIDecoder::readBuffer(size_t bytes)
             long fadeEnd = (framesRead + framesWritten > totalFrames) ? totalFrames : (framesRead + framesWritten);
             long fadePos;
 
-            float* buff = (float *)(buffer.data()) + fadeStart - framesRead;
+            float* buff = (float *)(buffer.data()) + fadeStart - (size_t)framesRead;
 
             float fadeScale = (float)(framesFade - (fadeStart - framesLength)) / framesFade;
             float fadeStep = 1.0f / (float)framesFade;
@@ -345,13 +347,13 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
 
     midifile.scan_for_loops(true, true, true, true);
 
-    long framesLength = midifile.get_timestamp_end(0, true);
+    double framesLength = midifile.get_timestamp_end(0, true);
 
-    long loopStart = midifile.get_timestamp_loop_start(0, true);
-    long loopEnd = midifile.get_timestamp_loop_end(0, true);
+    double loopStart = midifile.get_timestamp_loop_start(0, true);
+    double loopEnd = midifile.get_timestamp_loop_end(0, true);
 
-    if(loopStart == ~0UL) loopStart = 0;
-    if(loopEnd == ~0UL) loopEnd = framesLength;
+    if(loopStart == (double)(~0UL)) loopStart = 0;
+    if(loopEnd == (double)(~0UL)) loopEnd = framesLength;
 
     bool isLooped;
     long framesFade;
@@ -361,15 +363,17 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
         framesLength = loopStart + (loopEnd - loopStart) * loopCount;
         isLooped = true;
     } else {
-        framesLength += 1000;
+        framesLength += 1.0;
         framesFade = 0;
         isLooped = false;
     }
 
+    framesLength = round(framesLength * 1000.0);
+
     long totalFrames = framesLength + framesFade;
  
     track.setDuration(static_cast<uint64_t>(totalFrames));
-    track.setSampleRate(static_cast<int>(SampleRate));
+    track.setSampleRate(SampleRate);
     track.setBitDepth(32);
     track.setChannels(2);
     track.setEncoding(u"Synthesized"_s);

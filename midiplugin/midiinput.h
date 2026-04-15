@@ -56,12 +56,12 @@ private:
     bool m_isDecoding;
 
     bool repeatOne;
-    long totalFrames;
-	long framesLength;
-	long framesFade;
-	long framesRead;
-    long loopStart;
-    long loopEnd;
+    double totalFrames;
+    double framesLength;
+    double framesFade;
+    double framesRead;
+    double loopStart;
+    double loopEnd;
 };
  
 class MIDIReader : public AudioReader
