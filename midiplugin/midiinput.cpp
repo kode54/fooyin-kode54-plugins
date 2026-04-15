@@ -24,7 +24,7 @@
 #include <QDir>
 #include <QRegularExpression>
 
-#include "BMPlayer.h"
+#include "SpessaPlayer.h"
 
 #include "midi_processing/midi_processor.h"
  
@@ -45,8 +45,39 @@ QStringList fileExtensions()
     static const QStringList extensions = {u"mid"_s, u"midi"_s, u"kar"_s, u"rmi"_s, u"mids"_s, u"mds"_s, u"hmi"_s, u"hmp"_s, u"hmq"_s, u"mus"_s, u"xmi"_s, u"lds"_s};
     return extensions;
 }
- 
-void configurePlayer(BMPlayer* player)
+
+QStringList soundfontExtensions()
+{
+    static const QStringList extensions = {u"sf2"_s, u"sf2pack"_s, u"sf3"_s, u"sf4"_s, u"dls"_s};
+    return extensions;
+}
+
+QString findFilebank(const QString& filepath)
+{
+    const QFileInfo info{filepath};
+    const QDir dir{info.absolutePath()};
+    const QFileInfo infodir{dir.absolutePath()};
+
+    for(const auto ext : soundfontExtensions()) {
+        const auto files = dir.entryInfoList({info.completeBaseName() + u"."_s + ext}, QDir::Files);
+        if(files.isEmpty()) {
+            continue;
+        }
+        return files.front().absoluteFilePath();
+    }
+
+    for(const auto ext : soundfontExtensions()) {
+        const auto files = dir.entryInfoList({infodir.completeBaseName() + u"."_s + ext}, QDir::Files);
+        if(files.isEmpty()) {
+            continue;
+        }
+        return files.front().absoluteFilePath();
+    }
+
+    return {};
+}
+
+void configurePlayer(SpessaPlayer* player, QString fileBank)
 {
     using namespace Fooyin::MIDIInput;
 
@@ -59,6 +90,11 @@ void configurePlayer(BMPlayer* player)
     if(!soundfontPath.isEmpty())
     {
         player->setSoundFont(soundfontPath.toUtf8().constData());
+    }
+
+    if(!fileBank.isEmpty())
+    {
+        player->setFileSoundFont(fileBank.toUtf8().constData());
     }
 }
 } // namespace
@@ -104,10 +140,10 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         return {};
     }
 
-    bmplayer = new BMPlayer;
-    configurePlayer(bmplayer);
+    spessaplayer = new SpessaPlayer;
+    configurePlayer(spessaplayer, findFilebank(track.filepath()));;
 
-    m_midiPlayer = bmplayer;
+    m_midiPlayer = spessaplayer;
 
     int loopCount = m_settings.value(LoopCountSetting, DefaultLoopCount).toInt();
     if(options & NoLooping) {
@@ -160,6 +196,15 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
 
     unsigned int loop_mode = framesFade ? MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force : 0;
     unsigned int clean_flags = midi_container::clean_flag_emidi;
+
+    const uint8_t *embedded_bank = NULL;
+    size_t bank_size = 0;
+    uint16_t bank_offset = 0;
+    if (m_midiFile->get_embedded_bank(&embedded_bank, &bank_size, &bank_offset)) {
+        if (embedded_bank && bank_size) {
+            spessaplayer->setEmbeddedBank(embedded_bank, bank_size, bank_offset);
+        }
+    }
 
     if(!m_midiPlayer->Load(*m_midiFile, 0, loop_mode, clean_flags))
     {

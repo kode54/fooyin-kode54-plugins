@@ -24,7 +24,7 @@
 
 #include "MIDIPlayer.h"
 
-class BMPlayer;
+class SpessaPlayer;
 
 namespace Fooyin::MIDIInput {
 class MIDIDecoder : public Fooyin::AudioDecoder
@@ -50,7 +50,7 @@ private:
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
     midi_container* m_midiFile;
-    BMPlayer* bmplayer;
+    SpessaPlayer* spessaplayer;
     MIDIPlayer* m_midiPlayer;
     Fooyin::Track m_changedTrack;
     bool m_isDecoding;

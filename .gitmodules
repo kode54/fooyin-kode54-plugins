@@ -25,3 +25,6 @@
 [submodule "xsf/snes9x"]
 	path = xsf/snes9x
 	url = https://bitbucket.org/losnoco/libsnes9x
+[submodule "midiplugin/spessasynth_core"]
+	path = midiplugin/spessasynth_core
+	url = https://github.com/kode54/spessasynth_core_c.git

@@ -10,16 +10,16 @@ project(
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(sflist)
 add_subdirectory(midi_processing)
+add_subdirectory(spessasynth_core/spessasynth_core)
 
 create_fooyin_plugin(
     midiplugin
     DEPENDS Fooyin::Gui
             bass
             bassmidi
-            sflist
             midi_processing
+            spessasynth_core
     SOURCES midiinputplugin.cpp
             midiinputplugin.h
             midiinput.cpp
@@ -27,8 +27,8 @@ create_fooyin_plugin(
             midiinputdefs.h
             midiinputsettings.cpp
             midiinputsettings.h
-            BMPlayer.cpp
-            BMPlayer.h
+            SpessaPlayer.cpp
+            SpessaPlayer.h
             MIDIPlayer.cpp
             MIDIPlayer.h
 )
