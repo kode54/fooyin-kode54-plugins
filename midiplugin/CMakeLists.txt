@@ -17,7 +17,7 @@ create_fooyin_plugin(
     midiplugin
     DEPENDS Fooyin::Gui
             midi_processing
-            spessasynth_core
+    PRIVATE spessasynth_core
     SOURCES midiinputplugin.cpp
             midiinputplugin.h
             midiinput.cpp
