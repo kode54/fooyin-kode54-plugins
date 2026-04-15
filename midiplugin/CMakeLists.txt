@@ -16,8 +16,6 @@ add_subdirectory(spessasynth_core/spessasynth_core)
 create_fooyin_plugin(
     midiplugin
     DEPENDS Fooyin::Gui
-            bass
-            bassmidi
             midi_processing
             spessasynth_core
     SOURCES midiinputplugin.cpp
