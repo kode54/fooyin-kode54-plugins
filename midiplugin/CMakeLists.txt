@@ -11,7 +11,7 @@ project(
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_subdirectory(midi_processing)
-add_subdirectory(spessasynth_core/spessasynth_core)
+add_subdirectory(spessasynth_core/spessasynth_core EXCLUDE_FROM_ALL)
 
 create_fooyin_plugin(
     midiplugin
