@@ -208,17 +208,7 @@ void SpessaPlayer::send_sysex_time(const uint8_t *data, size_t size, size_t port
 
 void SpessaPlayer::render(float *out, unsigned long count) {
 	const double timeAdd = (double)count / dSampleRate;
-	while (count) {
-		unsigned long blockCount = outputMax;
-		if (blockCount > count) blockCount = count;
-		count -= blockCount;
-		ss_processor_render(_synth, outputLeft, outputRight, blockCount);
-		for (unsigned long i = 0; i < blockCount; ++i)
-		{
-			*out++ = outputLeft[i];
-			*out++ = outputRight[i];
-		}
-	}
+	ss_processor_render_interleaved(_synth, out, (uint32_t)count);
 	playerTime += timeAdd;
 }
 
