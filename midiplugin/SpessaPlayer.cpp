@@ -222,6 +222,10 @@ void SpessaPlayer::setFileSoundFont(const char *in) {
 	shutdown();
 }
 
+void SpessaPlayer::setFileSoundFontData(const uint8_t *bank, size_t bank_size) {
+	fileBankData.assign(bank, bank + bank_size);
+}
+
 void SpessaPlayer::setEmbeddedBank(const uint8_t *embedded_bank, size_t bank_size, uint16_t bank_offset) {
 	embeddedBank.assign(embedded_bank, embedded_bank + bank_size);
 	bankOffset = bank_offset;
@@ -259,8 +263,17 @@ bool SpessaPlayer::startup() {
 		return false;
 	}
 
+	SS_SoundBank* _fileBankAsData = NULL;
+	if (fileBankData.size()) {
+		SS_File *bankFile = ss_file_open_from_memory(fileBankData.data(), fileBankData.size(), false);
+		if(bankFile) {
+			_fileBankAsData = ss_soundbank_load(bankFile);
+			ss_file_close(bankFile);
+		}
+	}
+
 	SS_SoundBank* _embeddedBank = NULL;
-	if (embeddedBank.size()) {
+	if(embeddedBank.size()) {
 		SS_File *embedFile = ss_file_open_from_memory(embeddedBank.data(), embeddedBank.size(), false);
 		if(embedFile) {
 			_embeddedBank = ss_soundbank_load(embedFile);
@@ -268,8 +281,8 @@ bool SpessaPlayer::startup() {
 		}
 	}
 
-	if (fileBank) _banks.push_back(fileBank);
-	if (globalBank) _banks.push_back(globalBank);
+	if(fileBank) _banks.push_back(fileBank);
+	if(globalBank) _banks.push_back(globalBank);
 
 	SS_ProcessorOptions opts;
 	opts.enable_effects = true;
@@ -283,6 +296,10 @@ bool SpessaPlayer::startup() {
 
 	/* This bank will be owned */
 	if (_embeddedBank && !ss_processor_load_soundbank(_synth, _embeddedBank, "embeddedBank", bankOffset))
+		return false;
+
+	/* As will this bank, if supplied */
+	if (_fileBankAsData && !ss_processor_load_soundbank(_synth, _fileBankAsData, "fileBankAsData", 0))
 		return false;
 
 	if (fileBank && !ss_processor_load_soundbank(_synth, fileBank, "fileBank", 0))

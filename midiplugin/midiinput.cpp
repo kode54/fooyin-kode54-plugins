@@ -177,6 +177,39 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         }
     }
 
+    if(track.isInArchive() && source.archiveReader) {
+        const QFileInfo fileInfo{track.pathInArchive()};
+
+        bool found = false;
+        for(const auto ext : soundfontExtensions()) {
+            const QString soundfontPath = fileInfo.dir().relativeFilePath(fileInfo.completeBaseName() + u"."_s + ext);
+            auto soundfontEntry = source.archiveReader->entry(soundfontPath);
+            if(soundfontEntry.device) {
+                const auto soundfontData = soundfontEntry.device->readAll();
+                if(!soundfontData.isEmpty()) {
+                    spessaplayer->setFileSoundFontData((const uint8_t *)soundfontData.constData(), soundfontData.size());
+                    found = true;
+                    break;
+                }
+            }
+        }
+
+        if(!found) {
+            const QFileInfo infoarchive{track.archivePath()};
+            for(const auto ext : soundfontExtensions()) {
+                const QString soundfontPath = fileInfo.dir().relativeFilePath(infoarchive.completeBaseName() + u"."_s + ext);
+                auto soundfontEntry = source.archiveReader->entry(soundfontPath);
+                if(soundfontEntry.device) {
+                    const auto soundfontData = soundfontEntry.device->readAll();
+                    if(!soundfontData.isEmpty()) {
+                        spessaplayer->setFileSoundFontData((const uint8_t *)soundfontData.constData(), soundfontData.size());
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     m_midiFile->scan_for_loops(true, true, true, true);
 
     framesLength = m_midiFile->get_timestamp_end(0, true);

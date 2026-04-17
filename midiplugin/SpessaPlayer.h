@@ -4,6 +4,7 @@
 #include "MIDIPlayer.h"
 
 #include "spessasynth/synthesizer/synth.h"
+#include <vector>
 
 class SpessaPlayer : public MIDIPlayer {
 	public:
@@ -16,6 +17,7 @@ class SpessaPlayer : public MIDIPlayer {
 	// configuration
 	void setSoundFont(const char* in);
 	void setFileSoundFont(const char* in);
+	void setFileSoundFontData(const uint8_t *bank, size_t bank_size);
 	void setEmbeddedBank(const uint8_t *embedded_bank, size_t bank_size, uint16_t bank_offset);
 
 	void setInterpolation(SS_InterpolationType interp);
@@ -35,6 +37,7 @@ class SpessaPlayer : public MIDIPlayer {
 	std::vector<SS_SoundBank *> _banks;
 	SS_Processor* _synth;
 	uint16_t bankOffset;
+	std::vector<uint8_t> fileBankData;
 	std::vector<uint8_t> embeddedBank;
 	std::string sSoundFontName;
 	std::string sFileSoundFontName;
