@@ -268,7 +268,7 @@ void BMPlayer::send_event(uint32_t b) {
 	event[1] = static_cast<uint8_t>(b >> 8);
 	event[2] = static_cast<uint8_t>(b >> 16);
 	unsigned port = (b >> 24) & 0x7F;
-	if(port > 2) port = 0;
+	if(port > 3) port = 0;
 	const unsigned channel = (b & 0x0F) + port * 16;
 	const unsigned command = b & 0xF0;
 	const unsigned event_length = (command >= 0xF8 && command <= 0xFF) ? 1 : ((command == 0xC0 || command == 0xD0) ? 2 : 3);
@@ -309,7 +309,7 @@ void BMPlayer::shutdown() {
 bool BMPlayer::startup() {
 	if(_stream) return true;
 
-	_stream = BASS_MIDI_StreamCreate(48, BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE | (bSincInterpolation ? BASS_MIDI_SINCINTER : 0), (unsigned int)uSampleRate);
+	_stream = BASS_MIDI_StreamCreate(64, BASS_SAMPLE_FLOAT | BASS_STREAM_DECODE | (bSincInterpolation ? BASS_MIDI_SINCINTER : 0), (unsigned int)uSampleRate);
 	if(!_stream) {
 		return false;
 	}
@@ -324,7 +324,7 @@ bool BMPlayer::startup() {
 			return false;
 		}
 		_soundFonts.push_back(font);
-		presetList.push_back({ font, -1, -1, -1, 0, 0, 0, 48 });
+		presetList.push_back({ font, -1, -1, -1, 0, 0, 0, 64 });
 	}
 
 	if(sSoundFontName.length()) {
