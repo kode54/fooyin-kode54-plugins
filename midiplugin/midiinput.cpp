@@ -190,8 +190,6 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         return {};
     }
 
-    spessaplayer->setFileSoundFontBankOffset(m_midiFile->scan_for_bank_offset());
-
     {
         const uint8_t *embedded_bank = NULL;
         size_t bank_size = 0;
