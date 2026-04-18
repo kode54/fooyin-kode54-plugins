@@ -96,6 +96,30 @@ void configurePlayer(SpessaPlayer* player, QString fileBank)
     {
         player->setFileSoundFont(fileBank.toUtf8().constData());
     }
+
+    int interpolation = setting.value(InterpolationSetting, DefaultInterpolation).toInt();
+    int polyphony = setting.value(VoiceCountSetting, DefaultVoiceCount).toInt();
+
+    SS_InterpolationType interp;
+
+    switch(interpolation) {
+        case 0:
+            interp = SS_INTERP_NEAREST;
+            break;
+        default:
+        case 1:
+            interp = SS_INTERP_LINEAR;
+            break;
+        case 2:
+            interp = SS_INTERP_HERMITE;
+            break;
+        case 3:
+            interp = SS_INTERP_SINC;
+            break;
+    }
+
+    player->setInterpolation(interp);
+    player->setVoiceCount(polyphony);
 }
 } // namespace
 

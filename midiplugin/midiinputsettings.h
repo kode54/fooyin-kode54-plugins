@@ -26,6 +26,7 @@
 class QCheckBox;
 class QLineEdit;
 class QSpinBox;
+class QComboBox;
 
 namespace Fooyin::MIDIInput {
 class MIDIInputSettings : public QDialog
@@ -43,6 +44,8 @@ private:
     FySettings m_settings;
     QSpinBox* m_loopCount;
     QSpinBox* m_fadeLength;
+    QSpinBox* m_voiceCount;
+    QComboBox* m_interpolationFilter;
     QLineEdit* m_soundfontLocation;
 };
 } // namespace Fooyin::MIDIInput

@@ -160,6 +160,7 @@ SpessaPlayer::SpessaPlayer()
 : MIDIPlayer() {
 	_synth = nullptr;
 	interp = SS_INTERP_LINEAR;
+	voiceCount = 512;
 	fileFontBankOffset = 0;
 
 	if(!g_initializer.initialize()) throw std::runtime_error("Unable to initialize SpessaSynth");
@@ -242,6 +243,13 @@ void SpessaPlayer::setInterpolation(SS_InterpolationType interp)
 	shutdown();
 }
 
+void SpessaPlayer::setVoiceCount(int voice_count)
+{
+	if(voice_count < 1 || voice_count > 2048) return;
+	voiceCount = voice_count;
+	shutdown();
+}
+
 void SpessaPlayer::shutdown() {
 	if (_synth) {
 		ss_processor_remove_soundbank(_synth, "fileBank", true);
@@ -291,7 +299,7 @@ bool SpessaPlayer::startup() {
 
 	SS_ProcessorOptions opts;
 	opts.enable_effects = true;
-	opts.voice_cap = 512;
+	opts.voice_cap = voiceCount;
 	opts.interpolation = interp;
 
 	_synth = ss_processor_create(round(dSampleRate), &opts);

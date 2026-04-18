@@ -22,6 +22,7 @@ class SpessaPlayer : public MIDIPlayer {
 	void setEmbeddedBank(const uint8_t *embedded_bank, size_t bank_size, uint16_t bank_offset);
 
 	void setInterpolation(SS_InterpolationType interp);
+	void setVoiceCount(int voice_count);
 
 	private:
 	virtual unsigned int send_event_needs_time();
@@ -45,6 +46,7 @@ class SpessaPlayer : public MIDIPlayer {
 	std::string sFileSoundFontName;
 
 	SS_InterpolationType interp;
+	int voiceCount;
 
 	double playerTime;
 

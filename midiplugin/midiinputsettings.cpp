@@ -31,6 +31,7 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QSpinBox>
+#include <QComboBox>
 
 using namespace Qt::StringLiterals;
 
@@ -39,6 +40,8 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
     : QDialog{parent}
     , m_loopCount{new QSpinBox(this)}
     , m_fadeLength{new QSpinBox(this)}
+    , m_voiceCount{new QSpinBox(this)}
+    , m_interpolationFilter{new QComboBox(this)}
     , m_soundfontLocation{new QLineEdit(this)}
 {
     setWindowTitle(tr("%1 Settings").arg(u"MIDI Input"_s));
@@ -93,17 +96,43 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
     generalLayout->setColumnStretch(1, 1);
     generalLayout->setRowStretch(row++, 1);
 
+    auto* synthesisGroup  = new QGroupBox(tr("Synthesis"), this);
+    auto* synthesisLayout = new QGridLayout(synthesisGroup);
+
+    auto* interpolationLabel = new QLabel(tr("Interpolation") + u":"_s, this);
+
+    m_interpolationFilter->addItem(tr("None"), 0);
+    m_interpolationFilter->addItem(tr("Linear"), 1);
+    m_interpolationFilter->addItem(tr("Hermite"), 2);
+    m_interpolationFilter->addItem(tr("Sinc"), 3);
+
+    auto* voicesLabel = new QLabel(tr("Polyphony") + u":"_s, this);
+
+    m_voiceCount->setRange(1, 2048);
+    m_voiceCount->setSingleStep(10);
+    m_voiceCount->setSuffix(u" "_s + tr("voices"));
+
+    row = 0;
+    synthesisLayout->addWidget(interpolationLabel, row, 0);
+    synthesisLayout->addWidget(m_interpolationFilter, row++, 1, 1, 4);
+    synthesisLayout->addWidget(voicesLabel, row, 0);
+    synthesisLayout->addWidget(m_voiceCount, row++, 1, 1, 4);
+
     auto* layout = new QGridLayout(this);
     layout->setSizeConstraint(QLayout::SetFixedSize);
 
     row = 0;
     layout->addWidget(lengthGroup, row++, 0, 1, 4);
     layout->addWidget(generalGroup, row++, 0, 1, 4);
+    layout->addWidget(synthesisGroup, row++, 0, 1, 4);
     layout->addWidget(buttons, row++, 0, 1, 4, Qt::AlignBottom);
     layout->setColumnStretch(2, 1);
 
     m_loopCount->setValue(m_settings.value(LoopCountSetting, DefaultLoopCount).toInt());
     m_fadeLength->setValue(m_settings.value(FadeLengthSetting, DefaultFadeLength).toInt());
+    m_interpolationFilter->setCurrentIndex(
+        m_interpolationFilter->findData(m_settings.value(InterpolationSetting, DefaultInterpolation).toInt()));
+    m_voiceCount->setValue(m_settings.value(VoiceCountSetting, DefaultVoiceCount).toInt());
     m_soundfontLocation->setText(m_settings.value(SoundfontPathSetting).toString());
 }
  
@@ -111,6 +140,8 @@ void MIDIInputSettings::accept()
 {
     m_settings.setValue(LoopCountSetting, m_loopCount->value());
     m_settings.setValue(FadeLengthSetting, m_fadeLength->value());
+    m_settings.setValue(InterpolationSetting, m_interpolationFilter->currentData().toInt());
+    m_settings.setValue(VoiceCountSetting, m_voiceCount->value());
     m_settings.setValue(SoundfontPathSetting, m_soundfontLocation->text());
 
     done(Accepted);
