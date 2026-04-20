@@ -26,10 +26,8 @@
 
 #include "SpessaPlayer.h"
 
-#include "midi_processing/midi_processor.h"
- 
 #include <QLoggingCategory>
- 
+
 Q_LOGGING_CATEGORY(MIDI_INPUT, "fy.midiinput")
  
 using namespace Qt::StringLiterals;
@@ -40,6 +38,24 @@ constexpr auto FilterReverbChorus = false;
 constexpr auto BufferLen = 1024;
 
 namespace {
+double subsong_start_seconds(const SS_MIDIFile *midi, size_t subsong) {
+    if(!midi || midi->format != 2 || subsong == 0) return 0.0;
+    if(subsong >= midi->track_count) return 0.0;
+    const SS_MIDITrack *prev = &midi->tracks[subsong - 1];
+    if(prev->event_count == 0) return 0.0;
+    return ss_midi_ticks_to_seconds(midi, prev->events[prev->event_count - 1].ticks);
+}
+
+double subsong_end_seconds(const SS_MIDIFile *midi, size_t subsong) {
+    if(!midi) return 0.0;
+    if(midi->format != 2)
+        return midi->duration;
+    if(subsong >= midi->track_count) return midi->duration;
+    const SS_MIDITrack *tr = &midi->tracks[subsong];
+    if(tr->event_count == 0) return subsong_start_seconds(midi, subsong);
+    return ss_midi_ticks_to_seconds(midi, tr->events[tr->event_count - 1].ticks);
+}
+
 QStringList fileExtensions()
 {
     static const QStringList extensions = {u"mid"_s, u"midi"_s, u"kar"_s, u"rmi"_s, u"mids"_s, u"mds"_s, u"hmi"_s, u"hmp"_s, u"hmq"_s, u"mus"_s, u"xmi"_s, u"lds"_s};
@@ -178,27 +194,25 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         loopCount = DefaultLoopCount;
     }
     
-    std::vector<uint8_t> inputFile(data.begin(), data.end());
-    m_midiFile = new midi_container;
-    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().constData(), *m_midiFile))
+    SS_File *midiFile = ss_file_open_from_memory((const uint8_t *)data.constData(), data.size(), false);
+    if(!midiFile) {
+        return {};
+    }
+
+    m_midiFile = ss_midi_load(midiFile, track.extension().toUtf8().constData());
+    ss_file_close(midiFile);
+    if(!m_midiFile)
     {
         return {};
     }
 
-    if(!m_midiFile->get_timestamp_end(0))
-    {
-        return {};
+    if(ss_midi_has_emidi(m_midiFile)) {
+        ss_midi_remove_emidi_non_gm(m_midiFile);
     }
 
+    if(m_midiFile->duration <= 0.0)
     {
-        const uint8_t *embedded_bank = NULL;
-        size_t bank_size = 0;
-        uint16_t bank_offset = 0;
-        if (m_midiFile->get_embedded_bank(&embedded_bank, &bank_size, &bank_offset)) {
-            if (embedded_bank && bank_size) {
-                spessaplayer->setEmbeddedBank(embedded_bank, bank_size, bank_offset);
-            }
-        }
+        return {};
     }
 
     if(track.isInArchive() && source.archiveReader) {
@@ -234,15 +248,29 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         }
     }
 
-    m_midiFile->scan_for_loops(true, true, true, true);
+    int subsong = track.subsong();
 
-    framesLength = m_midiFile->get_timestamp_end(0, true);
+    double subsong_begin = subsong_start_seconds(m_midiFile, (size_t)subsong);
+    double subsong_end = subsong_end_seconds(m_midiFile, (size_t)subsong);
 
-    loopStart = m_midiFile->get_timestamp_loop_start(0, true);
-    loopEnd = m_midiFile->get_timestamp_loop_end(0, true);
+    framesLength = subsong_end - subsong_begin;
 
-    if(loopStart == (double)(~0UL)) loopStart = 0;
-    if(loopEnd == (double)(~0UL)) loopEnd = framesLength;
+    loopStart = -1;
+    loopEnd = -1;
+
+    if(m_midiFile->loop.end > 0) {
+        loopStart = ss_midi_ticks_to_seconds(m_midiFile, m_midiFile->loop.start);
+        loopEnd = ss_midi_ticks_to_seconds(m_midiFile, m_midiFile->loop.end);
+
+        /* Express loop boundaries relative to subsong start. */
+        loopStart -= subsong_begin;
+        loopEnd -= subsong_begin;
+        if(loopStart < 0.0) loopStart = 0.0;
+        if(loopEnd < 0.0) loopEnd = 0.0;
+    }
+
+    if(loopStart == -1) loopStart = 0;
+    if(loopEnd = -1) loopEnd = framesLength;
 
     bool isLooped;
     if(loopStart != 0 || loopEnd != framesLength)
@@ -251,26 +279,23 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         framesLength = loopStart + (loopEnd - loopStart) * loopCount;
         isLooped = true;
     } else {
-        framesLength += 1.0;
         framesFade = 0;
         isLooped = false;
     }
 
     framesRead = 0;
     framesLength = round(framesLength * SampleRate);
-    framesFade = round(framesFade * SampleRate);
 
     totalFrames = framesLength + framesFade;
 
-    unsigned int loop_mode = framesFade ? MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force : 0;
-    unsigned int clean_flags = midi_container::clean_flag_emidi;
+    unsigned int loop_mode = repeatOne ? MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force : 0;
 
-    if(!m_midiPlayer->Load(*m_midiFile, 0, loop_mode, clean_flags))
+    if(!m_midiPlayer->Load(m_midiFile, (unsigned)subsong, loop_mode, framesFade))
     {
         return {};
     }
 
-    m_midiPlayer->setLoopMode((repeatOne || isLooped) ? (MIDIPlayer::loop_mode_enable | MIDIPlayer::loop_mode_force) : 0);
+    m_midiPlayer->setFilterMode(MIDIPlayer::filter_default, false);
 
     return m_format;
 }
@@ -287,7 +312,7 @@ void MIDIDecoder::stop()
         m_midiPlayer = NULL;
     }
     if(m_midiFile) {
-        delete m_midiFile;
+        ss_midi_free(m_midiFile);
         m_midiFile = NULL;
     }
     m_changedTrack = {};
@@ -361,7 +386,15 @@ Fooyin::AudioBuffer MIDIDecoder::readBuffer(size_t bytes)
  
     return buffer;
 }
- 
+
+MIDIReader::MIDIReader() {
+    m_midiFile = NULL;
+}
+
+MIDIReader::~MIDIReader() {
+    ss_midi_free(m_midiFile);
+}
+
 QStringList MIDIReader::extensions() const
 {
     return fileExtensions();
@@ -376,41 +409,74 @@ bool MIDIReader::canWriteMetaData() const
 {
     return false;
 }
- 
-bool MIDIReader::readTrack(const AudioSource& source, Track& track)
+
+int MIDIReader::subsongCount() const
 {
-    midi_container midifile;
+    return m_subsongCount;
+}
  
+bool MIDIReader::init(const AudioSource& source)
+{
     const QByteArray data = source.device->peek(source.device->size());
     if(data.isEmpty()) {
         return false;
     }
  
-    std::vector<uint8_t> inputFile(data.begin(), data.end());
-    if(!midi_processor::process_file(inputFile, track.extension().toUtf8().constData(), midifile)) {
+    SS_File* file = ss_file_open_from_memory((const uint8_t *)data.constData(), data.size(), false);
+    if(!file) {
         return false;
     }
 
+    const QFileInfo info{source.filepath};
+    m_midiFile = ss_midi_load(file, info.suffix().toUtf8().constData());
+    ss_file_close(file);
+    if(!m_midiFile) {
+        return false;
+    }
+
+    if(m_midiFile->duration <= 0.0) {
+        return false;
+    }
+
+    m_subsongCount = 1;
+
+    if(m_midiFile->format == 2)
+        m_subsongCount = m_midiFile->track_count;
+
+    return true;
+}
+
+bool MIDIReader::readTrack(const Fooyin::AudioSource& source, Fooyin::Track& track) {
     const FySettings settings;
  
     int loopCount = settings.value(LoopCountSetting).toInt();
     if(loopCount == 0) {
         loopCount = DefaultLoopCount;
     }
+
+    int subsong = track.subsong();
  
-    if(!midifile.get_timestamp_end(0)) {
-        return false;
+    double subsong_begin = subsong_start_seconds(m_midiFile, (size_t)subsong);
+    double subsong_end = subsong_end_seconds(m_midiFile, (size_t)subsong);
+
+    double framesLength = subsong_end - subsong_begin;
+
+    double loopStart = -1;
+    double loopEnd = -1;
+
+    if(m_midiFile->loop.end > 0) {
+        loopStart = ss_midi_ticks_to_seconds(m_midiFile, m_midiFile->loop.start);
+        loopEnd = ss_midi_ticks_to_seconds(m_midiFile, m_midiFile->loop.end);
+
+        /* Express loop boundaries relative to subsong start. */
+        loopStart -= subsong_begin;
+        loopEnd -= subsong_begin;
+        if(loopStart < 0.0) loopStart = 0.0;
+        if(loopEnd < 0.0) loopEnd = 0.0;
     }
 
-    midifile.scan_for_loops(true, true, true, true);
-
-    double framesLength = midifile.get_timestamp_end(0, true);
-
-    double loopStart = midifile.get_timestamp_loop_start(0, true);
-    double loopEnd = midifile.get_timestamp_loop_end(0, true);
-
-    if(loopStart == (double)(~0UL)) loopStart = 0;
-    if(loopEnd == (double)(~0UL)) loopEnd = framesLength;
+    if(loopStart == -1) loopStart = 0;
+    if(loopEnd == -1) loopEnd = framesLength;
 
     bool isLooped;
     long framesFade;
@@ -435,38 +501,20 @@ bool MIDIReader::readTrack(const AudioSource& source, Track& track)
     track.setChannels(2);
     track.setEncoding(u"Synthesized"_s);
 
-    midi_meta_data metadata;
-    midifile.get_meta_data(0, metadata);
+    const SS_RMIDIInfo *ri = &m_midiFile->rmidi_info;
 
-    midi_meta_data_item item;
-    bool remap_display_name = !metadata.get_item("title", item);
+    track.setTitle(QString::fromLocal8Bit(QByteArrayView(ri->name, ri->name_len)));
+    track.setArtists({QString::fromLocal8Bit(QByteArrayView(ri->artist, ri->artist_len))});
+    track.setAlbum(QString::fromLocal8Bit(QByteArrayView(ri->album, ri->album_len)));
+    track.setGenres({QString::fromLocal8Bit(QByteArrayView(ri->genre, ri->genre_len))});
+    track.setComment(QString::fromLocal8Bit(QByteArrayView(ri->comment, ri->comment_len)));
+    track.setDate(QString::fromLocal8Bit(QByteArrayView(ri->creation_date, ri->creation_date_len)));
 
-    for(size_t i = 0; i < metadata.get_count(); ++i) {
-        const midi_meta_data_item &item = metadata[i];
-        if(!strcasecmp(item.m_name.c_str(), "TITLE") ||
-           remap_display_name && !strcasecmp(item.m_name.c_str(), "DISPLAY_NAME")) {
-            track.setTitle(QString::fromLocal8Bit(item.m_value.c_str()));
-        }
-        else if(!strcasecmp(item.m_name.c_str(), "ARTIST")) {
-            track.setArtists({QString::fromLocal8Bit(item.m_value.c_str())});
-        }
-        else if(!strcasecmp(item.m_name.c_str(), "ALBUM")) {
-            track.setAlbum(QString::fromLocal8Bit(item.m_value.c_str()));
-        }
-        else if(!strcasecmp(item.m_name.c_str(), "DATE")) {
-            track.setDate(QString::fromLocal8Bit(item.m_value.c_str()));
-        }
-        else if(!strcasecmp(item.m_name.c_str(), "GENRE")) {
-            track.setGenres({QString::fromLocal8Bit(item.m_value.c_str())});
-        }
-        else if(!strcasecmp(item.m_name.c_str(), "COMMENT")) {
-            track.setComment({QString::fromLocal8Bit(item.m_value.c_str())});
-        }
-        else {
-            track.addExtraTag(QString::fromLocal8Bit(item.m_name.c_str()).toUpper(), QString::fromLocal8Bit(item.m_value.c_str()));
-        }
-    }
- 
+    track.addExtraTag(u"copyright"_s, QString::fromLocal8Bit(QByteArrayView(ri->copyright, ri->copyright_len)));
+    track.addExtraTag(u"engineer"_s, QString::fromLocal8Bit(QByteArrayView(ri->engineer, ri->engineer_len)));
+    track.addExtraTag(u"software"_s, QString::fromLocal8Bit(QByteArrayView(ri->software, ri->software_len)));
+    track.addExtraTag(u"subject"_s, QString::fromLocal8Bit(QByteArrayView(ri->subject, ri->subject_len)));
+
     return true;
 }
 } // namespace Fooyin::MIDIInput

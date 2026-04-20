@@ -49,7 +49,8 @@ private:
     DecoderOptions m_options;
     Fooyin::FySettings m_settings;
     Fooyin::AudioFormat m_format;
-    midi_container* m_midiFile;
+    int m_subsong;
+    SS_MIDIFile* m_midiFile;
     SpessaPlayer* spessaplayer;
     MIDIPlayer* m_midiPlayer;
     Fooyin::Track m_changedTrack;
@@ -67,10 +68,19 @@ private:
 class MIDIReader : public AudioReader
 {
 public:
+    explicit MIDIReader();
+    ~MIDIReader();
+
     [[nodiscard]] QStringList extensions() const override;
     [[nodiscard]] bool canReadCover() const override;
     [[nodiscard]] bool canWriteMetaData() const override;
+    [[nodiscard]] int subsongCount() const override;
 
+    bool init(const AudioSource& source) override;
     bool readTrack(const Fooyin::AudioSource& source, Fooyin::Track& track) override;
+
+private:
+    SS_MIDIFile *m_midiFile;
+    int m_subsongCount;
 };
 } // namespace Fooyin::MIDIInput
