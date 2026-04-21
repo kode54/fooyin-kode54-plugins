@@ -350,38 +350,6 @@ Fooyin::AudioBuffer MIDIDecoder::readBuffer(size_t bytes)
         m_midiPlayer->Play(framesOut, framesToWrite);
         framesWritten += framesToWrite;
     }
-    if(!repeatOne && (framesWritten + framesRead > framesLength))
-    {
-        if(framesFade)
-        {
-            long fadeStart = (framesLength > framesRead) ? framesLength : framesRead;
-            long fadeEnd = (framesRead + framesWritten > totalFrames) ? totalFrames : (framesRead + framesWritten);
-            long fadePos;
-
-            float* buff = (float *)(buffer.data()) + fadeStart - (size_t)framesRead;
-
-            float fadeScale = (float)(framesFade - (fadeStart - framesLength)) / framesFade;
-            float fadeStep = 1.0f / (float)framesFade;
-            for(fadePos = fadeStart; fadePos < fadeEnd; ++fadePos)
-            {
-                buff[0] *= fadeScale;
-                buff[1] *= fadeScale;
-                buff += 2;
-                fadeScale += fadeStep;
-                if(fadeScale < 0.f)
-                {
-                    fadeScale = 0.f;
-                    fadeStep = 0.f;
-                }
-            }
-
-            if(framesRead + framesWritten > totalFrames) {
-                size_t newFramesWritten = totalFrames - framesRead;
-                float* buff = ((float *)(buffer.data() + m_format.bytesForFrames(newFramesWritten)));
-                memset(buff, 0, m_format.bytesForFrames(framesWritten - newFramesWritten));
-            }
-        }
-    }
     framesRead += framesWritten;
  
     return buffer;
