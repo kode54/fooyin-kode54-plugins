@@ -331,11 +331,6 @@ Fooyin::AudioBuffer MIDIDecoder::readBuffer(size_t bytes)
         return {};
     }
 
-    if(!repeatOne && framesRead >= totalFrames)
-    {
-        return {};
-    }
-
     const auto startTime = static_cast<uint64_t>(m_format.durationForFrames(m_midiPlayer->Tell()));
 
     AudioBuffer buffer{m_format, startTime};
@@ -347,10 +342,18 @@ Fooyin::AudioBuffer MIDIDecoder::readBuffer(size_t bytes)
         const int framesToWrite = std::min(frames - framesWritten, BufferLen);
         const int bufferPos     = m_format.bytesForFrames(framesWritten);
         float* framesOut = (float *)(buffer.data() + bufferPos);
-        m_midiPlayer->Play(framesOut, framesToWrite);
-        framesWritten += framesToWrite;
+        unsigned long framesRendered = m_midiPlayer->Play(framesOut, framesToWrite);
+        if(!framesRendered) break;
+        framesWritten += framesRendered;
     }
     framesRead += framesWritten;
+
+    if(!framesWritten) {
+        return {};
+    } else if(framesWritten < frames) {
+        const int bufferPos = m_format.bytesForFrames(framesWritten);
+        memset(buffer.data() + bufferPos, 0, bytes - bufferPos);
+    }
  
     return buffer;
 }
