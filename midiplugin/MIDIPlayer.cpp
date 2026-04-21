@@ -132,6 +132,7 @@ bool MIDIPlayer::Load(SS_MIDIFile *in_midi, unsigned subsong, unsigned loop_mode
 	if(!in_midi) return false;
 	midi_file = in_midi;
 	loop_mode_flags = loop_mode;
+	setLoopCount(1);
 	port_mask = derive_port_mask(midi_file);
 
 	/* Compute subsong time window (format-2 only; single-song otherwise). */
