@@ -39,6 +39,7 @@ class SpessaPlayer : public MIDIPlayer {
 	private:
 	std::vector<uint8_t> fileBankData;
 	std::vector<SS_SoundBank *> _banks;
+	std::vector<SS_FilteredBanks *> _filteredBanks;
 	SS_Processor *_synth;
 	uint16_t fileBankOffset;
 	std::string sSoundFontName;

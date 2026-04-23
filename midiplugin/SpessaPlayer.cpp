@@ -31,7 +31,6 @@ bool has_ext_ci(const char *path, const char *ext) {
 }
 
 SS_FilteredBanks *open_sflist(const char *path) {
-	SS_FilteredBanks *banks = nullptr;
 	char base_path[4096];
 
 	const char *slash = strrchr(path, '/');
@@ -53,129 +52,26 @@ SS_FilteredBanks *open_sflist(const char *path) {
 			ss_file_close(sflistFile);
 
 			char err[sflist_max_error] = "";
-			banks = sflist_load(sflist, sflistSize, base_path, err);
+			SS_FilteredBanks *banks = sflist_load(sflist, sflistSize, base_path, err);
 			free(sflist);
 
 			return banks;
 		}
 		ss_file_close(sflistFile);
 	}
+
 	return nullptr;
 }
+
+static SS_SoundBank *open_font(const char *path) {
+	SS_File *bankFile = ss_file_open_from_file(path);
+	if(bankFile) {
+		SS_SoundBank *bank = ss_soundbank_load(bankFile);
+		ss_file_close(bankFile);
+		return bank;
+	}
+	return nullptr;
 }
-
-struct Spessa_Cached_SoundFont {
-	unsigned long ref_count;
-	std::chrono::steady_clock::time_point time_released;
-	SS_SoundBank *bank;
-	Spessa_Cached_SoundFont()
-	: bank(nullptr) {
-	}
-	Spessa_Cached_SoundFont(const Spessa_Cached_SoundFont &in) {
-		ref_count = in.ref_count;
-		time_released = in.time_released;
-		bank = in.bank;
-	}
-	Spessa_Cached_SoundFont(SS_SoundBank *in)
-	: bank(in), ref_count(1) {
-	}
-};
-
-static std::mutex *Cache_Lock;
-
-static std::map<std::string, Spessa_Cached_SoundFont> *Cache_List;
-
-static bool Cache_Running = false;
-
-static std::thread *Cache_Thread = NULL;
-
-static void cache_run();
-
-static void cache_init() {
-	Cache_Lock = new std::mutex;
-	Cache_List = new std::map<std::string, Spessa_Cached_SoundFont>;
-	Cache_Thread = new std::thread(cache_run);
-}
-
-static void cache_deinit() {
-	Cache_Running = false;
-	Cache_Thread->join();
-	delete Cache_Thread;
-
-	for(auto it = Cache_List->begin(); it != Cache_List->end(); ++it) {
-		if(it->second.bank)
-			ss_soundbank_free(it->second.bank);
-	}
-	delete Cache_List;
-}
-
-static SS_SoundBank *cache_open_font(const char *path) {
-	SS_SoundBank *bank = nullptr;
-
-	std::lock_guard<std::mutex> lock(*Cache_Lock);
-
-	auto &entry = (*Cache_List)[path];
-
-	if(!entry.bank) {
-		SS_File *bankFile = ss_file_open_from_file(path);
-		if(bankFile) {
-			bank = ss_soundbank_load(bankFile);
-			ss_file_close(bankFile);
-			if(bank) {
-				entry.bank = bank;
-				entry.ref_count = 1;
-			} else {
-				Cache_List->erase(path);
-			}
-		} else {
-			Cache_List->erase(path);
-		}
-	} else {
-		bank = entry.bank;
-		++(entry.ref_count);
-	}
-
-	return bank;
-}
-
-static void cache_close_font(SS_SoundBank *bank) {
-	std::lock_guard<std::mutex> lock(*Cache_Lock);
-
-	for(auto it = Cache_List->begin(); it != Cache_List->end(); ++it) {
-		if(it->second.bank == bank) {
-			if(--it->second.ref_count == 0)
-				it->second.time_released = std::chrono::steady_clock::now();
-			break;
-		}
-	}
-}
-
-static void cache_run() {
-	std::chrono::milliseconds dura(250);
-
-	Cache_Running = true;
-
-	while(Cache_Running) {
-		std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-
-		{
-			std::lock_guard<std::mutex> lock(*Cache_Lock);
-			for(auto it = Cache_List->begin(); it != Cache_List->end();) {
-				if(it->second.ref_count == 0) {
-					auto elapsed = std::chrono::duration_cast<std::chrono::seconds>(now - it->second.time_released);
-					if(elapsed.count() >= 10) {
-						if(it->second.bank)
-							ss_soundbank_free(it->second.bank);
-						it = Cache_List->erase(it);
-						continue;
-					}
-				}
-				++it;
-			}
-		}
-
-		std::this_thread::sleep_for(dura);
-	}
 }
 
 static class Spessa_Initializer {
@@ -192,7 +88,7 @@ static class Spessa_Initializer {
 
 	~Spessa_Initializer() {
 		if(initialized) {
-			cache_deinit();
+			/* Do nothing */
 		}
 	}
 
@@ -204,7 +100,6 @@ static class Spessa_Initializer {
 	bool initialize() {
 		std::lock_guard<std::mutex> lock(this->lock);
 		if(!initialized) {
-			cache_init();
 			ss_unit_converter_init();
 			initialized = true;
 		}
@@ -258,14 +153,14 @@ void SpessaPlayer::setVoiceCount(int polyphony) {
 
 void SpessaPlayer::shutdown() {
 	if(_synth) {
-		ss_processor_remove_soundbank(_synth, "fileBank", true);
-		ss_processor_remove_soundbank(_synth, "globalBank", true);
 		ss_processor_free(_synth);
 		_synth = nullptr;
 	}
+	/* In case the synth didn't init completely, clean up */
 	for(auto it = _banks.begin(); it != _banks.end(); ++it)
-		cache_close_font(*it);
-	_banks.resize(0);
+		ss_soundbank_free(*it);
+	for(auto it = _filteredBanks.begin(); it != _filteredBanks.end(); ++it)
+		ss_filtered_banks_free(*it, true);
 	initialized = false;
 }
 
@@ -279,7 +174,7 @@ bool SpessaPlayer::startup() {
 		if(has_ext_ci(path, ".sflist") || has_ext_ci(path, ".json"))
 			filteredFileBank = open_sflist(path);
 		else
-			fileBank = cache_open_font(path);
+			fileBank = open_font(path);
 	}
 
 	SS_SoundBank *globalBank = nullptr;
@@ -289,7 +184,7 @@ bool SpessaPlayer::startup() {
 		if(has_ext_ci(path, ".sflist") || has_ext_ci(path, ".json"))
 			filteredGlobalBank = open_sflist(path);
 		else
-			globalBank = cache_open_font(path);
+			globalBank = open_font(path);
 	}
 
 	SS_SoundBank* fileBankAsData = NULL;
@@ -311,6 +206,9 @@ bool SpessaPlayer::startup() {
 	if(fileBank) _banks.push_back(fileBank);
 	if(globalBank) _banks.push_back(globalBank);
 
+	if(filteredFileBank) _filteredBanks.push_back(filteredFileBank);
+	if(filteredGlobalBank) _filteredBanks.push_back(filteredGlobalBank);
+
 	SS_ProcessorOptions opts;
 	opts.enable_effects = true;
 	opts.voice_cap = voiceCount;
@@ -325,14 +223,26 @@ bool SpessaPlayer::startup() {
 	if(fileBankAsData && !ss_processor_load_soundbank(_synth, fileBankAsData, "fileBankAsData", fileBankOffset, false))
 		return false;
 
-	if(fileBank && !ss_processor_load_soundbank(_synth, fileBank, "fileBank", fileBankOffset, false))
-		return false;
-	if(filteredFileBank && !ss_processor_load_filtered_banks(_synth, filteredFileBank, "fileBank", false))
-		return false;
-	if(globalBank && !ss_processor_load_soundbank(_synth, globalBank, "globalBank", 0, false))
-		return false;
-	if(filteredGlobalBank && !ss_processor_load_filtered_banks(_synth, filteredGlobalBank, "globalBank", false))
-		return false;
+	if(fileBank) {
+		if(!ss_processor_load_soundbank(_synth, fileBank, "fileBank", fileBankOffset, false))
+			return false;
+		std::erase(_banks, fileBank);
+	}
+	if(filteredFileBank) {
+		if(!ss_processor_load_filtered_banks(_synth, filteredFileBank, "fileBank", false))
+			return false;
+		std::erase(_filteredBanks, filteredFileBank);
+	}
+	if(globalBank) {
+		if(!ss_processor_load_soundbank(_synth, globalBank, "globalBank", 0, false))
+			return false;
+		std::erase(_banks, globalBank);
+	}
+	if(filteredGlobalBank) {
+		if(!ss_processor_load_filtered_banks(_synth, filteredGlobalBank, "globalBank", false))
+			return false;
+		std::erase(_filteredBanks, filteredGlobalBank);
+	}
 
 	/* Embedded RMID soundbank is auto-loaded by ss_sequencer_load_midi. */
 
