@@ -1,5 +1,7 @@
 #include "SpessaPlayer.h"
+#include "spessasynth/sflist/sflist.h"
 
+#include <iomanip>
 #include <stdlib.h>
 
 #include <string>
@@ -12,6 +14,55 @@
 #include <thread>
 
 #define _countof(arr) (sizeof(arr) / sizeof((arr)[0]))
+
+namespace {
+bool has_ext_ci(const char *path, const char *ext) {
+	size_t plen = strlen(path);
+	size_t elen = strlen(ext);
+	if(plen < elen) return false;
+	const char *tail = path + plen - elen;
+	for(size_t i = 0; i < elen; i++) {
+		char a = tail[i], b = ext[i];
+		if(a >= 'A' && a <= 'Z') a = (char)(a - 'A' + 'a');
+		if(b >= 'A' && b <= 'Z') b = (char)(b - 'A' + 'a');
+		if(a != b) return false;
+	}
+	return true;
+}
+
+SS_FilteredBanks *open_sflist(const char *path) {
+	SS_FilteredBanks *banks = nullptr;
+	char base_path[4096];
+
+	const char *slash = strrchr(path, '/');
+	if(slash) {
+		size_t n = (size_t)(slash - path);
+		if(n >= sizeof(base_path)) n = sizeof(base_path) - 1;
+		memcpy(base_path, path, n);
+		base_path[n] = '\0';
+	} else {
+		strcpy(base_path, ".");
+	}
+
+	SS_File *sflistFile = ss_file_open_from_file(path);
+	if(sflistFile) {
+		size_t sflistSize = ss_file_size(sflistFile);
+		char *sflist = (char *)malloc(sflistSize);
+		if(sflist && sflistSize) {
+			ss_file_read_bytes(sflistFile, 0, (uint8_t *)sflist, sflistSize);
+			ss_file_close(sflistFile);
+
+			char err[sflist_max_error] = "";
+			banks = sflist_load(sflist, sflistSize, base_path, err);
+			free(sflist);
+
+			return banks;
+		}
+		ss_file_close(sflistFile);
+	}
+	return nullptr;
+}
+}
 
 struct Spessa_Cached_SoundFont {
 	unsigned long ref_count;
@@ -222,12 +273,24 @@ bool SpessaPlayer::startup() {
 	if(_synth) return true;
 
 	SS_SoundBank *fileBank = nullptr;
-	if(sFileSoundFontName.length())
-		fileBank = cache_open_font(sFileSoundFontName.c_str());
+	SS_FilteredBanks *filteredFileBank = nullptr;
+	if(sFileSoundFontName.length()) {
+		const char *path = sFileSoundFontName.c_str();
+		if(has_ext_ci(path, ".sflist") || has_ext_ci(path, ".json"))
+			filteredFileBank = open_sflist(path);
+		else
+			fileBank = cache_open_font(path);
+	}
 
 	SS_SoundBank *globalBank = nullptr;
-	if(sSoundFontName.length())
-		globalBank = cache_open_font(sSoundFontName.c_str());
+	SS_FilteredBanks *filteredGlobalBank = nullptr;
+	if(sSoundFontName.length()) {
+		const char *path = sSoundFontName.c_str();
+		if(has_ext_ci(path, ".sflist") || has_ext_ci(path, ".json"))
+			filteredGlobalBank = open_sflist(path);
+		else
+			globalBank = cache_open_font(path);
+	}
 
 	SS_SoundBank* fileBankAsData = NULL;
 	if (fileBankData.size()) {
@@ -241,7 +304,7 @@ bool SpessaPlayer::startup() {
 	const bool has_embedded = midi_file && midi_file->embedded_soundbank &&
 	                          midi_file->embedded_soundbank_size > 0;
 
-	if(!fileBank && !fileBankAsData && !globalBank && !has_embedded) {
+	if(!fileBank && !filteredFileBank && !fileBankAsData && !globalBank && !filteredGlobalBank && !has_embedded) {
 		return false;
 	}
 
@@ -264,7 +327,11 @@ bool SpessaPlayer::startup() {
 
 	if(fileBank && !ss_processor_load_soundbank(_synth, fileBank, "fileBank", fileBankOffset, false))
 		return false;
+	if(filteredFileBank && !ss_processor_load_filtered_banks(_synth, filteredFileBank, "fileBank", false))
+		return false;
 	if(globalBank && !ss_processor_load_soundbank(_synth, globalBank, "globalBank", 0, false))
+		return false;
+	if(filteredGlobalBank && !ss_processor_load_filtered_banks(_synth, filteredGlobalBank, "globalBank", false))
 		return false;
 
 	/* Embedded RMID soundbank is auto-loaded by ss_sequencer_load_midi. */

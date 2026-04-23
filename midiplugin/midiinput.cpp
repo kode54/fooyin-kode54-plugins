@@ -64,7 +64,7 @@ QStringList fileExtensions()
 
 QStringList soundfontExtensions()
 {
-    static const QStringList extensions = {u"sf2"_s, u"sf2pack"_s, u"sf3"_s, u"sf4"_s, u"dls"_s};
+    static const QStringList extensions = {u"sf2"_s, u"sf2pack"_s, u"sf3"_s, u"sf4"_s, u"dls"_s, u"sflist"_s, u"json"_s};
     return extensions;
 }
 
