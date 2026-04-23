@@ -162,7 +162,7 @@ void SpessaPlayer::shutdown() {
 	for(auto it = _filteredBanks.begin(); it != _filteredBanks.end(); ++it)
 		ss_filtered_banks_free(*it, true);
 	_banks.resize(0);
-	.filteredBanks.resize(0);
+	_filteredBanks.resize(0);
 	initialized = false;
 }
 
