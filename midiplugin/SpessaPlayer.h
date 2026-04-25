@@ -17,7 +17,7 @@ class SpessaPlayer : public MIDIPlayer {
 	void setFileSoundFontData(const uint8_t *bank, size_t bank_size);
 
 	void setInterpolation(SS_InterpolationType interp);
-	void setVoiceCount(int polyphony);
+	void setVoiceCount(uint32_t polyphony);
 
 	protected:
 	virtual SS_Processor *getProcessor() {
@@ -46,7 +46,7 @@ class SpessaPlayer : public MIDIPlayer {
 	std::string sFileSoundFontName;
 
 	SS_InterpolationType interp;
-	int voiceCount;
+	uint32_t voiceCount;
 };
 
 #endif

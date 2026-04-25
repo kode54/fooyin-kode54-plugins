@@ -144,7 +144,7 @@ void SpessaPlayer::setInterpolation(SS_InterpolationType interp) {
 	shutdown();
 }
 
-void SpessaPlayer::setVoiceCount(int polyphony) {
+void SpessaPlayer::setVoiceCount(uint32_t polyphony) {
 	if(polyphony > 0) {
 		this->voiceCount = polyphony;
 		shutdown();
@@ -211,10 +211,13 @@ bool SpessaPlayer::startup() {
 	if(filteredFileBank) _filteredBanks.push_back(filteredFileBank);
 	if(filteredGlobalBank) _filteredBanks.push_back(filteredGlobalBank);
 
-	SS_ProcessorOptions opts;
-	opts.enable_effects = true;
-	opts.voice_cap = voiceCount;
-	opts.interpolation = interp;
+	SS_ProcessorOptions opts = {
+		.enable_effects = true,
+		.voice_cap = voiceCount,
+		.interpolation = interp,
+		.preload_all_samples = false,
+		.preload_instruments = false
+	};
 
 	_synth = ss_processor_create((uint32_t)std::lround(dSampleRate), &opts);
 	if(!_synth) {

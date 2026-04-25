@@ -58,7 +58,7 @@ double subsong_end_seconds(const SS_MIDIFile *midi, size_t subsong) {
 
 QStringList fileExtensions()
 {
-    static const QStringList extensions = {u"mid"_s, u"midi"_s, u"kar"_s, u"rmi"_s, u"mids"_s, u"mds"_s, u"hmi"_s, u"hmp"_s, u"hmq"_s, u"mus"_s, u"xmi"_s, u"lds"_s};
+    static const QStringList extensions = {u"mid"_s, u"midi"_s, u"kar"_s, u"rmi"_s, u"mids"_s, u"mds"_s, u"hmi"_s, u"hmp"_s, u"hmq"_s, u"mus"_s, u"xmi"_s, u"lds"_s, u"xmf"_s, u"mxmf"_s};
     return extensions;
 }
 
