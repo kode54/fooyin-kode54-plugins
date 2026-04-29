@@ -10,12 +10,9 @@ project(
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-add_subdirectory(midi_processing)
-
 create_fooyin_plugin(
     midiplugin
     DEPENDS Fooyin::Gui
-            midi_processing
     PRIVATE spessasynth
     SOURCES midiinputplugin.cpp
             midiinputplugin.h
