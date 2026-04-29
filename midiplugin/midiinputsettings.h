@@ -40,6 +40,7 @@ public:
 
 private:
     void getSoundfontPath();
+    void getSoundfontGSPath();
 
     FySettings m_settings;
     QSpinBox* m_loopCount;
@@ -47,5 +48,6 @@ private:
     QSpinBox* m_voiceCount;
     QComboBox* m_interpolationFilter;
     QLineEdit* m_soundfontLocation;
+    QLineEdit* m_soundfontGSLocation;
 };
 } // namespace Fooyin::MIDIInput

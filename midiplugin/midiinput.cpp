@@ -93,7 +93,7 @@ QString findFilebank(const QString& filepath)
     return {};
 }
 
-void configurePlayer(SpessaPlayer* player, QString fileBank)
+void configurePlayer(SpessaPlayer* player, QString fileBank, bool is_gs)
 {
     using namespace Fooyin::MIDIInput;
 
@@ -103,7 +103,12 @@ void configurePlayer(SpessaPlayer* player, QString fileBank)
     const Fooyin::FySettings setting;
 
     QString soundfontPath = setting.value(SoundfontPathSetting).toString();
-    if(!soundfontPath.isEmpty())
+    QString soundfontGSPath = setting.value(SoundfontGSPathSetting).toString();
+    if(!soundfontGSPath.isEmpty() && is_gs)
+    {
+        player->setSoundFont(soundfontGSPath.toUtf8().constData());
+    }
+    else if(!soundfontPath.isEmpty())
     {
         player->setSoundFont(soundfontPath.toUtf8().constData());
     }
@@ -180,20 +185,6 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
         return {};
     }
 
-    spessaplayer = new SpessaPlayer;
-    configurePlayer(spessaplayer, findFilebank(track.filepath()));;
-
-    m_midiPlayer = spessaplayer;
-
-    int loopCount = m_settings.value(LoopCountSetting, DefaultLoopCount).toInt();
-    if(options & NoLooping) {
-        loopCount = 1;
-    }
-    repeatOne = !(options & NoInfiniteLooping) && isRepeatingTrack();
-    if(options & NoInfiniteLooping && isRepeatingTrack()) {
-        loopCount = DefaultLoopCount;
-    }
-    
     SS_File *midiFile = ss_file_open_from_memory((const uint8_t *)data.constData(), data.size(), false);
     if(!midiFile) {
         return {};
@@ -213,6 +204,20 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
     if(m_midiFile->duration <= 0.0)
     {
         return {};
+    }
+
+    spessaplayer = new SpessaPlayer;
+    configurePlayer(spessaplayer, findFilebank(track.filepath()), ss_midi_has_gs(m_midiFile));
+
+    m_midiPlayer = spessaplayer;
+
+    int loopCount = m_settings.value(LoopCountSetting, DefaultLoopCount).toInt();
+    if(options & NoLooping) {
+        loopCount = 1;
+    }
+    repeatOne = !(options & NoInfiniteLooping) && isRepeatingTrack();
+    if(options & NoInfiniteLooping && isRepeatingTrack()) {
+        loopCount = DefaultLoopCount;
     }
 
     if(track.isInArchive() && source.archiveReader) {

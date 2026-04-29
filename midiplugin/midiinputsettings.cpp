@@ -43,6 +43,7 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
     , m_voiceCount{new QSpinBox(this)}
     , m_interpolationFilter{new QComboBox(this)}
     , m_soundfontLocation{new QLineEdit(this)}
+    , m_soundfontGSLocation{new QLineEdit(this)}
 {
     setWindowTitle(tr("%1 Settings").arg(u"MIDI Input"_s));
     setModal(true);
@@ -77,10 +78,11 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
     auto* generalGroup  = new QGroupBox(tr("General"), this);
     auto* generalLayout = new QGridLayout(generalGroup);
 
-    auto* soundfontPathLabel = new QLabel(tr("Soundfont bank") + u":"_s, this);
-    auto* soundfontHintLabel = new QLabel(u"🛈 "_s
-                                        + tr("MIDI files require a SoundFont bank or banks to play."),
-                                    this);
+    auto* soundfontPathLabel   = new QLabel(tr("Soundfont bank") + u":"_s, this);
+    auto* soundfontGSPathLabel = new QLabel(tr("GS mode bank") + u":"_s, this);
+    auto* soundfontHintLabel   = new QLabel(u"🛈 "_s
+        + tr("MIDI files require a SoundFont bank or banks to play. A separate bank may be chosen as an alternate default for GS MIDI files."),
+        this);
     soundfontHintLabel->setWordWrap(true);
 
     auto* browseButton = new QPushButton(tr("&Browse…"), this);
@@ -88,10 +90,18 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
 
     m_soundfontLocation->setMinimumWidth(200);
 
+    auto* browseGSButton = new QPushButton(tr("&Browse…"), this);
+    QObject::connect(browseGSButton, &QPushButton::pressed, this, &MIDIInputSettings::getSoundfontGSPath);
+
+    m_soundfontGSLocation->setMinimumWidth(200);
+
     row = 0;
     generalLayout->addWidget(soundfontPathLabel, row, 0);
     generalLayout->addWidget(m_soundfontLocation, row, 1);
     generalLayout->addWidget(browseButton, row++, 2);
+    generalLayout->addWidget(soundfontGSPathLabel, row, 0);
+    generalLayout->addWidget(m_soundfontGSLocation, row, 1);
+    generalLayout->addWidget(browseGSButton, row++, 2);
     generalLayout->addWidget(soundfontHintLabel, row++, 0, 1, 3);
     generalLayout->setColumnStretch(1, 1);
     generalLayout->setRowStretch(row++, 1);
@@ -134,8 +144,9 @@ MIDIInputSettings::MIDIInputSettings(QWidget* parent)
         m_interpolationFilter->findData(m_settings.value(InterpolationSetting, DefaultInterpolation).toInt()));
     m_voiceCount->setValue(m_settings.value(VoiceCountSetting, DefaultVoiceCount).toInt());
     m_soundfontLocation->setText(m_settings.value(SoundfontPathSetting).toString());
+    m_soundfontGSLocation->setText(m_settings.value(SoundfontGSPathSetting).toString());
 }
- 
+
 void MIDIInputSettings::accept()
 {
     m_settings.setValue(LoopCountSetting, m_loopCount->value());
@@ -143,10 +154,11 @@ void MIDIInputSettings::accept()
     m_settings.setValue(InterpolationSetting, m_interpolationFilter->currentData().toInt());
     m_settings.setValue(VoiceCountSetting, m_voiceCount->value());
     m_settings.setValue(SoundfontPathSetting, m_soundfontLocation->text());
+    m_settings.setValue(SoundfontGSPathSetting, m_soundfontGSLocation->text());
 
     done(Accepted);
 }
- 
+
 void MIDIInputSettings::getSoundfontPath()
 {
     const QString soundfontPath = QFileDialog::getOpenFileName(this, tr("Select Soundfont bank"), QDir::homePath(), tr("Soundfont Banks (*.sf2 *.sf2pack *.sf3 *.sf4 *.dls *.sflist *.json)"));
@@ -155,5 +167,15 @@ void MIDIInputSettings::getSoundfontPath()
     }
 
     m_soundfontLocation->setText(soundfontPath);
+}
+
+void MIDIInputSettings::getSoundfontGSPath()
+{
+    const QString soundfontGSPath = QFileDialog::getOpenFileName(this, tr("Select GS mode Soundfont bank"), QDir::homePath(), tr("Soundfont Banks (*.sf2 *.sf2pack *.sf3 *.sf4 *.dls *.sflist *.json)"));
+    if(soundfontGSPath.isEmpty()) {
+        return;
+    }
+
+    m_soundfontGSLocation->setText(soundfontGSPath);
 }
 } // namespace Fooyin::MIDIInput

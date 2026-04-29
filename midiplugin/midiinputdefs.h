@@ -20,17 +20,18 @@
 #pragma once
 
 namespace Fooyin::MIDIInput {
-constexpr auto SoundfontPathSetting = "MIDIInput/SoundfontPath";
+constexpr auto SoundfontPathSetting   = "MIDIInput/SoundfontPath";
+constexpr auto SoundfontGSPathSetting = "MIDIInput/SoundfontGSPath";
 
-constexpr auto DefaultInterpolation = 1;
-constexpr auto InterpolationSetting = "MIDIInput/Interpolation";
+constexpr auto DefaultInterpolation   = 1;
+constexpr auto InterpolationSetting   = "MIDIInput/Interpolation";
 
-constexpr auto DefaultVoiceCount    = 512;
-constexpr auto VoiceCountSetting    = "MIDIInput/VoiceCount";
+constexpr auto DefaultVoiceCount      = 512;
+constexpr auto VoiceCountSetting      = "MIDIInput/VoiceCount";
 
-constexpr auto DefaultLoopCount     = 2;
-constexpr auto LoopCountSetting     = "MIDIInput/LoopCount";
-constexpr auto DefaultFadeLength    = 4000;
-constexpr auto FadeLengthSetting    = "MIDIInput/FadeLength";
+constexpr auto DefaultLoopCount       = 2;
+constexpr auto LoopCountSetting       = "MIDIInput/LoopCount";
+constexpr auto DefaultFadeLength      = 4000;
+constexpr auto FadeLengthSetting      = "MIDIInput/FadeLength";
 
 } // namespace Fooyin::MIDIInput
