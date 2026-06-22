@@ -275,7 +275,7 @@ std::optional<Fooyin::AudioFormat> MIDIDecoder::init(const Fooyin::AudioSource& 
     }
 
     if(loopStart == -1) loopStart = 0;
-    if(loopEnd = -1) loopEnd = framesLength;
+    if(loopEnd == -1) loopEnd = framesLength;
 
     bool isLooped;
     if(loopStart != 0 || loopEnd != framesLength)
